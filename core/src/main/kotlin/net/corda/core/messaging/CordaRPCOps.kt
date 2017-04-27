@@ -31,7 +31,7 @@ data class StateMachineInfo(
         val initiator: FlowInitiator,
         val progressTrackerStepAndUpdates: Pair<String, Observable<String>>?
 ) {
-    override fun toString(): String = "${javaClass.simpleName}($id, $flowLogicClassName)"
+    override fun toString(): String = "${javaClass.simpleName}($id, $flowLogicClassName, $initiator)"
 }
 
 @CordaSerializable
@@ -47,11 +47,9 @@ sealed class StateMachineUpdate {
 
 /**
  * RPC operations that the node exposes to clients using the Java client library. These can be called from
- * client apps and are implemented by the node in the [net.corda.node.internal.CordaRPCOpsImpl] class.
+ * client apps.
  */
-
 // TODO: The use of Pairs throughout is unfriendly for Java interop.
-
 interface CordaRPCOps : RPCOps {
     /**
      * Returns the RPC protocol version, which is the same the node's Platform Version. Exists since version 1 so guaranteed
