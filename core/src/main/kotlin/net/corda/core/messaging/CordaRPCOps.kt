@@ -23,6 +23,7 @@ import java.io.InputStream
 import java.security.PublicKey
 import java.time.Instant
 import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
 
 @CordaSerializable
 data class StateMachineInfo(
@@ -46,10 +47,45 @@ sealed class StateMachineUpdate {
 }
 
 /**
+ *
+ */
+@CordaSerializable
+open class SnapshotWithUpdates<out S, U>(val snapshot: List<S>, rawUpdates: Observable<U>) : AutoCloseable {
+    private val subscribers = AtomicInteger(-1)
+    val updates: Observable<U> = rawUpdates
+            .doOnSubscribe { if (!subscribers.compareAndSet(-1, 1)) subscribers.incrementAndGet() }
+            .doOnUnsubscribe { subscribers.decrementAndGet() }
+
+    @Deprecated("Use snapshot instead", ReplaceWith("snapshot"))
+    val first: List<S> get() = snapshot
+    @Deprecated("Use updates instead", ReplaceWith("updates"))
+    val second: Observable<U> get() = updates
+
+    operator fun component1(): List<S> = snapshot
+    operator fun component2(): Observable<U> = updates
+
+    override fun close() {
+        val subCount = subscribers.get()
+        if (subCount == -1) {
+            // No one has used the Observable but we still need to do this subscribe-unsubscribe dance to tell the
+            // server to stop buffering updates
+            updates.subscribe({}, {}).unsubscribe()
+        } else if (subCount > 0) {
+            throw IllegalStateException("There are $subCount subscriptions left open")
+        }
+    }
+
+    override fun toString(): String = "${javaClass.simpleName}(snapshot=$snapshot)"
+}
+
+class SameType<T>(snapshot: List<T>, updates: Observable<T>) : SnapshotWithUpdates<T, T>(snapshot, updates) {
+    fun everything(): Observable<T> = updates.startWith(snapshot)
+}
+
+/**
  * RPC operations that the node exposes to clients using the Java client library. These can be called from
  * client apps.
  */
-// TODO: The use of Pairs throughout is unfriendly for Java interop.
 interface CordaRPCOps : RPCOps {
     /**
      * Returns the RPC protocol version, which is the same the node's Platform Version. Exists since version 1 so guaranteed
@@ -57,36 +93,49 @@ interface CordaRPCOps : RPCOps {
      */
     override val protocolVersion: Int get() = nodeIdentity().platformVersion
 
-    /**
-     * Returns a pair of currently in-progress state machine infos and an observable of future state machine adds/removes.
-     */
     @RPCReturnsObservables
-    fun stateMachinesAndUpdates(): Pair<List<StateMachineInfo>, Observable<StateMachineUpdate>>
+    @Deprecated("", ReplaceWith("flowStateMachines()"))
+    fun stateMachinesAndUpdates(): Pair<List<StateMachineInfo>, Observable<StateMachineUpdate>> {
+        val (snapshot, updates) = flowStateMachines()
+        return snapshot to updates
+    }
+
+    /**
+     * Returns a pair of currently in-progress flow state machine infos and an observable of future state machine adds and
+     * removes.
+     */
+    fun flowStateMachines(): SnapshotWithUpdates<StateMachineInfo, StateMachineUpdate>
 
     /**
      * Returns a pair of head states in the vault and an observable of future updates to the vault.
      */
     @RPCReturnsObservables
-    fun vaultAndUpdates(): Pair<List<StateAndRef<ContractState>>, Observable<Vault.Update>>
+    fun vaultAndUpdates(): SnapshotWithUpdates<StateAndRef<ContractState>, Vault.Update>
 
     /**
      * Returns a pair of all recorded transactions and an observable of future recorded ones.
      */
     @RPCReturnsObservables
-    fun verifiedTransactions(): Pair<List<SignedTransaction>, Observable<SignedTransaction>>
+    fun verifiedTransactions(): SameType<SignedTransaction>
 
     /**
      * Returns a snapshot list of existing state machine id - recorded transaction hash mappings, and a stream of future
      * such mappings as well.
      */
     @RPCReturnsObservables
-    fun stateMachineRecordedTransactionMapping(): Pair<List<StateMachineTransactionMapping>, Observable<StateMachineTransactionMapping>>
+    fun stateMachineRecordedTransactionMapping(): SameType<StateMachineTransactionMapping>
 
     /**
      * Returns all parties currently visible on the network with their advertised services and an observable of future updates to the network.
      */
     @RPCReturnsObservables
-    fun networkMapUpdates(): Pair<List<NodeInfo>, Observable<NetworkMapCache.MapChange>>
+    @Deprecated("", ReplaceWith("networkMap()"))
+    fun networkMapUpdates(): Pair<List<NodeInfo>, Observable<NetworkMapCache.MapChange>> {
+        val (snapshot, updates) = networkMap()
+        return snapshot to updates
+    }
+
+    fun networkMap(): SnapshotWithUpdates<NodeInfo, NetworkMapCache.MapChange>
 
     /**
      * Start the given flow with the given arguments.
@@ -128,9 +177,12 @@ interface CordaRPCOps : RPCOps {
     fun attachmentExists(id: SecureHash): Boolean
 
     /**
-     * Download an attachment JAR by ID
+     * Download an attachment JAR which was previously uploaded using [uploadAttachment] using its ID.
      */
-    fun openAttachment(id: SecureHash): InputStream
+    fun downloadAttachment(id: SecureHash): InputStream
+
+    @Deprecated("Use downloadAttachment instead", ReplaceWith("downloadAttachment"))
+    fun openAttachment(id: SecureHash): InputStream = downloadAttachment(id)
 
     /**
      * Uploads a jar to the node, returns it's hash.
@@ -165,7 +217,7 @@ interface CordaRPCOps : RPCOps {
      * complete with an exception if it is unable to.
      */
     @RPCReturnsObservables
-    fun waitUntilRegisteredWithNetworkMap(): ListenableFuture<Unit>
+    fun waitUntilRegisteredWithNetworkMap(): ListenableFuture<*>
 
     // TODO These need rethinking. Instead of these direct calls we should have a way of replicating a subset of
     // the node's state locally and query that directly.

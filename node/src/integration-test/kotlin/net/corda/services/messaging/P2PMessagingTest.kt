@@ -76,6 +76,7 @@ class P2PMessagingTest : NodeBasedTest() {
                                 "notaryClusterAddresses" to listOf(notaryClusterAddress.toString()))),
                 startNode(ALICE.name)
         ).getOrThrow()
+        distributedService.run {  }
 
         assertAllNodesAreUsed(listOf(networkMapNode, serviceNode2), serviceName, alice)
     }
