@@ -131,7 +131,7 @@ public class VaultQueryJavaTests {
 
             List<UniqueIdentifier> linearIds = Arrays.asList(uid);
             List<X500Name> dealPartyNames = Arrays.asList(getMEGA_CORP().getName());
-            QueryCriteria dealCriteriaAll = new LinearStateQueryCriteria(linearIds, false, dealIds, dealPartyNames);
+            QueryCriteria dealCriteriaAll = new LinearStateQueryCriteria(linearIds, dealIds, dealPartyNames);
 
             QueryCriteria compositeCriteria = and(dealCriteriaAll, vaultCriteria);
 
@@ -200,7 +200,7 @@ public class VaultQueryJavaTests {
 
             List<UniqueIdentifier> linearIds = Arrays.asList(uid);
             List<X500Name> dealPartyNames = Arrays.asList(getMEGA_CORP().getName());
-            QueryCriteria dealCriteriaAll = new LinearStateQueryCriteria(linearIds, false, dealIds, dealPartyNames);
+            QueryCriteria dealCriteriaAll = new LinearStateQueryCriteria(linearIds, dealIds, dealPartyNames);
 
             QueryCriteria compositeCriteria = and(dealCriteriaAll, vaultCriteria);
 
