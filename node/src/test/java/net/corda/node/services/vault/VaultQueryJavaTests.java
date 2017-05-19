@@ -120,7 +120,7 @@ public class VaultQueryJavaTests {
             UniqueIdentifier uid = states.getStates().iterator().next().component1().getData().getLinearId();
 
             List<String> dealIds = Arrays.asList("123", "456", "789");
-            fillWithSomeTestDeals(services, dealIds, 0);
+            fillWithSomeTestDeals(services, dealIds);
 
             // DOCSTART VaultJavaQueryExample2
             Vault.StateStatus status = Vault.StateStatus.CONSUMED;
@@ -191,7 +191,7 @@ public class VaultQueryJavaTests {
             UniqueIdentifier uid = states.getStates().iterator().next().component1().getData().getLinearId();
 
             List<String> dealIds = Arrays.asList("123", "456", "789");
-            fillWithSomeTestDeals(services, dealIds, 0);
+            fillWithSomeTestDeals(services, dealIds);
 
             // DOCSTART VaultJavaQueryExample2
             @SuppressWarnings("unchecked")
