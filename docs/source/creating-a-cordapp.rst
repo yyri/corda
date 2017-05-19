@@ -12,20 +12,27 @@ App plugins
 To create an app plugin you must extend from `CordaPluginRegistry`_. The JavaDoc contains
 specific details of the implementation, but you can extend the server in the following ways:
 
-1. Service plugins: Register your services (see below).
+1. Register your flows and services (see below).
 2. Web APIs: You may register your own endpoints under /api/ of the bundled web server.
 3. Static web endpoints: You may register your own static serving directories for serving web content from the web server.
 4. Whitelisting your additional contract, state and other classes for object serialization.  Any class that forms part
    of a persisted state, that is used in messaging between flows or in RPC needs to be whitelisted.
 
-Services
---------
+Flows and services
+------------------
 
-Services are classes which are constructed after the node has started. It is provided a `PluginServiceHub`_ which
-allows a richer API than the `ServiceHub`_ exposed to contracts. It enables adding flows, registering
-message handlers and more. The service does not run in a separate thread, so the only entry point to the service is during
-construction, where message handlers should be registered and threads started.
+Flows are of two types: initiating and initiated. Initiating flows are typically client-side flows and will be used by
+other nodes using your CorDapp or users via RPC to initiate communication. These initiation requests trigger the initiated
+flows to run. Initiating flows need to be annotated with ``@InitiatingFlow`` and initiated flows need to be annotated with
+``@InitiatedBy``. ``InitiatedBy`` then needs to point back to initiating flow Class. The node scans your CorDapps for
+these annotations and automatically registers the initiating to initiated mapping for you. ``InitiatingFlow`` also has
+a ``version`` property to enable you to version your flows. A node will only accept communication from an initiating party
+if the version numbers match up.
 
+If your CorDapp also needs to have additional services running in the node, such as oracles, then annotate your service
+class with ``@CordaService``. As with the flows, the node will automatically pick this up and create it for use by your
+flows. The service class has to implement ``SerializeAsToken`` for correct usage within flows. If possible extend
+``SingletonSerializeAsToken`` instead to avoid the boilerplate.
 
 Starting nodes
 --------------

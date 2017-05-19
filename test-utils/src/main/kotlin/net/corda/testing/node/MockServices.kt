@@ -1,11 +1,8 @@
 package net.corda.testing.node
 
 import net.corda.core.contracts.Attachment
-import net.corda.core.contracts.PartyAndReference
 import net.corda.core.crypto.*
 import net.corda.core.flows.StateMachineRunId
-import net.corda.core.identity.AbstractParty
-import net.corda.core.identity.AnonymousParty
 import net.corda.core.identity.Party
 import net.corda.core.messaging.SingleMessageRecipient
 import net.corda.core.node.NodeInfo
@@ -23,22 +20,19 @@ import net.corda.node.services.vault.NodeVaultService
 import net.corda.testing.MEGA_CORP
 import net.corda.testing.MINI_CORP
 import net.corda.testing.MOCK_VERSION_INFO
-import org.bouncycastle.asn1.x500.X500Name
 import rx.Observable
 import rx.subjects.PublishSubject
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.cert.CertPath
-import java.security.cert.X509Certificate
 import java.time.Clock
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 import java.util.jar.JarInputStream
 import javax.annotation.concurrent.ThreadSafe
 
@@ -79,6 +73,8 @@ open class MockServices(vararg val keys: KeyPair) : ServiceHub {
         HibernateObserver(vaultService.rawUpdates, NodeSchemaService())
         return vaultService
     }
+
+    override fun <T : Any> cordaService(type: Class<T>): T = throw IllegalArgumentException("${type.name} not found")
 }
 
 class MockKeyManagementService(vararg initialKeys: KeyPair) : SingletonSerializeAsToken(), KeyManagementService {
@@ -109,7 +105,7 @@ class MockKeyManagementService(vararg initialKeys: KeyPair) : SingletonSerialize
 class MockAttachmentStorage : AttachmentStorage {
     val files = HashMap<SecureHash, ByteArray>()
     override var automaticallyExtractAttachments = false
-    override var storePath = Paths.get("")
+    override var storePath: Path = Paths.get("")
 
     override fun openAttachment(id: SecureHash): Attachment? {
         val f = files[id] ?: return null

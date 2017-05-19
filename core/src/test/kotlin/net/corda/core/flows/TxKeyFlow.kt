@@ -36,6 +36,7 @@ object TxKeyFlow {
      * Flow which waits for a key request from a counterparty, generates a new key and then returns it to the
      * counterparty and as the result from the flow.
      */
+    @InitiatedBy(Requester::class)
     class Provider(val otherSide: Party,
                    override val progressTracker: ProgressTracker) : FlowLogic<PublicKey>() {
         constructor(otherSide: Party) : this(otherSide, tracker())

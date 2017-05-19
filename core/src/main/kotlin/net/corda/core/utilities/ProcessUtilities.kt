@@ -5,18 +5,20 @@ import java.nio.file.Path
 object ProcessUtilities {
     inline fun <reified C : Any> startJavaProcess(
             arguments: List<String>,
+            classpath: String = System.getProperty("java.class.path"),
             jdwpPort: Int? = null,
             extraJvmArguments: List<String> = emptyList(),
             inheritIO: Boolean = true,
             errorLogPath: Path? = null,
             workingDirectory: Path? = null
     ): Process {
-        return startJavaProcess(C::class.java.name, arguments, jdwpPort, extraJvmArguments, inheritIO, errorLogPath, workingDirectory)
+        return startJavaProcess(C::class.java.name, arguments, classpath, jdwpPort, extraJvmArguments, inheritIO, errorLogPath, workingDirectory)
     }
 
     fun startJavaProcess(
             className: String,
             arguments: List<String>,
+            classpath: String = System.getProperty("java.class.path"),
             jdwpPort: Int? = null,
             extraJvmArguments: List<String> = emptyList(),
             inheritIO: Boolean = true,
@@ -24,7 +26,6 @@ object ProcessUtilities {
             workingDirectory: Path? = null
     ): Process {
         val separator = System.getProperty("file.separator")
-        val classpath = System.getProperty("java.class.path")
         val javaPath = System.getProperty("java.home") + separator + "bin" + separator + "java"
         val debugPortArgument = if (jdwpPort != null) {
             listOf("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$jdwpPort")

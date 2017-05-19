@@ -45,6 +45,13 @@ interface ServiceHub : ServicesForResolution {
     val myInfo: NodeInfo
 
     /**
+     * Return the singleton instance of the given Corda service type. This is a class that is annotated with
+     * [CordaService] and will have automatically been registered by the node.
+     * @throws IllegalArgumentException If [type] is not annotated with [CordaService] or if the instance is not found.
+     */
+    fun <T : Any> cordaService(type: Class<T>): T
+
+    /**
      * Given a [SignedTransaction], writes it to the local storage for validated transactions and then
      * sends them to the vault for further processing. Expects to be run within a database transaction.
      *

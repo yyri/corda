@@ -1,6 +1,8 @@
 package net.corda.node
 
 import co.paralleluniverse.fibers.Suspendable
+import net.corda.core.copyToDirectory
+import net.corda.core.createDirectories
 import net.corda.core.div
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.StartableByRPC
@@ -43,8 +45,24 @@ class BootTests {
                 startNode(ALICE.name).getOrThrow()
             }
             // We count the number of nodes that wrote into the logfile by counting "Logs can be found in"
-            val numberOfNodesThatLogged = Files.lines(logFile.toPath()).filter { it.contains(LOGS_CAN_BE_FOUND_IN_STRING) }.count()
+            val numberOfNodesThatLogged = Files.lines(logFile.toPath()).filter { LOGS_CAN_BE_FOUND_IN_STRING in it }.count()
             assertEquals(1, numberOfNodesThatLogged)
+        }
+    }
+
+    @Test
+    fun `CorDapps in plugins directory are scanned`() {
+        // If the CorDapp jar does't exist then run the integrationTestClasses gradle task
+        val cordappJar = Paths.get(javaClass.getResource("/trader-demo.jar").toURI())
+        driver {
+            val pluginsDir = (baseDirectory(ALICE.name) / "plugins").createDirectories()
+            cordappJar.copyToDirectory(pluginsDir)
+
+            val user = User("u", "p", emptySet())
+            val alice = startNode(ALICE.name, rpcUsers = listOf(user)).getOrThrow()
+            val rpc = alice.rpcClientToNode().start(user.username, user.password)
+            // If the CorDapp wasn't scanned then SellerFlow won't have been picked up as an RPC flow
+            assertThat(rpc.proxy.registeredFlows()).contains("net.corda.traderdemo.flow.SellerFlow")
         }
     }
 }

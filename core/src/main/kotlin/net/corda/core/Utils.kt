@@ -32,13 +32,7 @@ import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
-import kotlin.collections.Iterable
 import kotlin.collections.LinkedHashMap
-import kotlin.collections.List
-import kotlin.collections.filter
-import kotlin.collections.firstOrNull
-import kotlin.collections.fold
-import kotlin.collections.forEach
 import kotlin.concurrent.withLock
 import kotlin.reflect.KProperty
 
@@ -151,6 +145,12 @@ operator fun String.div(other: String) = Paths.get(this) / other
 fun Path.createDirectory(vararg attrs: FileAttribute<*>): Path = Files.createDirectory(this, *attrs)
 fun Path.createDirectories(vararg attrs: FileAttribute<*>): Path = Files.createDirectories(this, *attrs)
 fun Path.exists(vararg options: LinkOption): Boolean = Files.exists(this, *options)
+fun Path.copyToDirectory(targetDir: Path, vararg options: CopyOption): Path {
+    require(targetDir.isDirectory()) { "$targetDir is not a directory" }
+    val targetFile = targetDir.resolve(fileName)
+    Files.copy(this, targetFile, *options)
+    return targetFile
+}
 fun Path.moveTo(target: Path, vararg options: CopyOption): Path = Files.move(this, target, *options)
 fun Path.isRegularFile(vararg options: LinkOption): Boolean = Files.isRegularFile(this, *options)
 fun Path.isDirectory(vararg options: LinkOption): Boolean = Files.isDirectory(this, *options)
