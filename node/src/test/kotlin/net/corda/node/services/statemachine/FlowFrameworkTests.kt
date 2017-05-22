@@ -65,7 +65,7 @@ class FlowFrameworkTests {
         }
     }
 
-    private val net = MockNetwork(servicePeerAllocationStrategy = RoundRobin())
+    private var net = MockNetwork(servicePeerAllocationStrategy = RoundRobin())
     private val sessionTransfers = ArrayList<SessionTransfer>()
     private lateinit var node1: MockNode
     private lateinit var node2: MockNode
@@ -318,7 +318,8 @@ class FlowFrameworkTests {
                 node2 sent sessionData(20L) to node1,
                 node1 sent sessionData(11L) to node2,
                 node2 sent sessionData(21L) to node1,
-                node1 sent normalEnd to node2
+                node1 sent normalEnd to node2,
+                node2 sent normalEnd to node1
         )
     }
 
@@ -654,6 +655,20 @@ class FlowFrameworkTests {
         val result = node1.services.startFlow(SendAndReceiveFlow(node2.info.legalIdentity, "Hello")).resultFuture
         net.runNetwork()
         assertThat(result.getOrThrow()).isEqualTo("HelloHello")
+    }
+
+    @Test
+    fun `asdsad`() {
+        net = MockNetwork(false, true)
+        val f = node2.registerFlowFactoryAndGetFirstInitiatedFlow(SendAndReceiveFlow::class) {
+            println("other side started...")
+            SendAndReceiveFlow(it, "World")
+        }
+        val result = node1.services.startFlow(SendAndReceiveFlow(node2.info.legalIdentity, "Hello")).resultFuture
+        net.runNetwork()
+//        assertThat(f.getOrThrow().stateMachine.resultFuture.getOrThrow()).isEqualTo("Hello")
+        println("Waiting...")
+        assertThat(result.getOrThrow()).isEqualTo("World")
     }
 
 

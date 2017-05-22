@@ -103,7 +103,9 @@ object TwoPartyTradeFlow {
             val hello = SellerTradeInfo(assetToSell, price, myKey)
             // What we get back from the other side is a transaction that *might* be valid and acceptable to us,
             // but we must check it out thoroughly before we sign!
+            println(">>> sending SellerTradeInfo")
             val untrustedSTX = sendAndReceive<SignedTransaction>(otherParty, hello)
+            println(">>> reeived $untrustedSTX")
 
             progressTracker.currentStep = VERIFYING
             return untrustedSTX.unwrap {
@@ -179,7 +181,9 @@ object TwoPartyTradeFlow {
 
         @Suspendable
         private fun receiveAndValidateTradeRequest(): SellerTradeInfo {
+            println(">>> about to receive SellerTradeInfo")
             val maybeTradeRequest = receive<SellerTradeInfo>(otherParty)
+            println(">>> received $maybeTradeRequest")
 
             progressTracker.currentStep = VERIFYING
             maybeTradeRequest.unwrap {

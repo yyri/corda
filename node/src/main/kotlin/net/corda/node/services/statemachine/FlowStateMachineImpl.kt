@@ -337,13 +337,16 @@ class FlowStateMachineImpl<R>(override val id: StateMachineRunId,
 
     @Suspendable
     private fun ReceiveRequest<*>.suspendAndExpectReceive(): ReceivedSessionMessage<*> {
+        println(">>> received messages ${session.receivedMessages}")
         fun pollForMessage() = session.receivedMessages.poll()
 
         val polledMessage = pollForMessage()
         return if (polledMessage != null) {
             if (this is SendAndReceive) {
+                println(">>> about to suspend to send $message")
                 // We've already received a message but we suspend so that the send can be performed
-                suspend(this)
+                suspend(SendOnly(session, message))
+                println(">>> back from suspend")
             }
             polledMessage
         } else {

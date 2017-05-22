@@ -16,6 +16,7 @@ import net.corda.core.identity.Party
 import net.corda.core.messaging.SingleMessageRecipient
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.services.*
+import net.corda.core.serialization.deserialize
 import net.corda.core.serialization.serialize
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
@@ -28,6 +29,8 @@ import net.corda.node.services.config.NodeConfiguration
 import net.corda.node.services.persistence.DBTransactionStorage
 import net.corda.node.services.persistence.StorageServiceImpl
 import net.corda.node.services.persistence.checkpoints
+import net.corda.node.services.statemachine.SessionMessage
+import net.corda.node.services.statemachine.StateMachineManager
 import net.corda.node.utilities.transaction
 import net.corda.testing.*
 import net.corda.testing.node.InMemoryMessagingNetwork
@@ -123,6 +126,9 @@ class TwoPartyTradeFlowTests {
     @Test(expected = InsufficientBalanceException::class)
     fun `trade cash for commercial paper fails using soft locking`() {
         net = MockNetwork(false, true)
+        net.messagingNetwork.receivedMessages.filter { it.message.topicSession == StateMachineManager.sessionTopic }.forEach {
+            println(">>> " + it.message.data.deserialize<SessionMessage>())
+        }
 
         ledger {
             val notaryNode = net.createNotaryNode(null, DUMMY_NOTARY.name)
@@ -500,6 +506,7 @@ class TwoPartyTradeFlowTests {
         @Suspendable
         override fun call(): SignedTransaction {
             send(buyer, Pair(notary.notaryIdentity, price))
+            println(">>> sent notary")
             return subFlow(Seller(
                 buyer,
                 notary,
@@ -514,7 +521,9 @@ class TwoPartyTradeFlowTests {
         @Suspendable
         override fun call(): SignedTransaction {
             val (notary, price) = receive<Pair<Party, Amount<Currency>>>(seller).unwrap {
+                println(">>> received notary")
                 require(serviceHub.networkMapCache.isNotary(it.first)) { "${it.first} is not a notary" }
+//                require(false)
                 it
             }
             return subFlow(Buyer(seller, notary, price, CommercialPaper.State::class.java))

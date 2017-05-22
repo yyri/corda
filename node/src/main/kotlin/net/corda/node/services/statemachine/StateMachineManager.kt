@@ -308,13 +308,17 @@ class StateMachineManager(val serviceHub: ServiceHubInternal,
                 openSessions.remove(message.recipientSessionId)
             }
             session.receivedMessages += ReceivedSessionMessage(sender, message)
+            println(">>> SMM received $message")
             if (resumeOnMessage(message, session)) {
+                println(">>> SMM resuming on it")
                 // It's important that we reset here and not after the fiber's resumed, in case we receive another message
                 // before then.
                 session.fiber.waitingForResponse = null
                 updateCheckpoint(session.fiber)
                 session.fiber.logger.trace { "Resuming due to $message" }
                 resumeFiber(session.fiber)
+            } else {
+                println(">>> SMM not resuming on it, due to ${session.fiber.waitingForResponse}")
             }
         } else {
             val peerParty = recentlyClosedSessions.remove(message.recipientSessionId)
