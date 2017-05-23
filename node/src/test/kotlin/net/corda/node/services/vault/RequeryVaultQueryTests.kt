@@ -8,17 +8,14 @@ import net.corda.core.contracts.*
 import net.corda.core.crypto.entropyToKeyPair
 import net.corda.core.days
 import net.corda.core.identity.Party
-import net.corda.core.node.services.Vault
-import net.corda.core.node.services.VaultService
-import net.corda.core.node.services.linearHeadsOfType
-import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.*
 import net.corda.core.node.services.vault.*
 import net.corda.core.node.services.vault.QueryCriteria.*
 import net.corda.core.seconds
 import net.corda.core.serialization.OpaqueBytes
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.*
-import net.corda.node.services.contract.schemas.CommercialPaperSchemaV2
+import net.corda.node.services.contract.schemas.CommercialPaperSchemaV3
 import net.corda.node.services.vault.schemas.VaultLinearStateEntity
 import net.corda.node.services.vault.schemas.VaultSchema
 import net.corda.node.utilities.configureDatabase
@@ -44,9 +41,10 @@ import java.time.temporal.ChronoUnit
 import java.util.*
 import kotlin.test.assertFails
 
-class VaultQueryTests {
+class RequeryVaultQueryTests {
     lateinit var services: MockServices
     val vaultSvc: VaultService get() = services.vaultService
+    val vaultQuerySvc: VaultQueryService get() = services.vaultQueryService
     lateinit var dataSource: Closeable
     lateinit var database: Database
 
@@ -67,6 +65,7 @@ class VaultQueryTests {
                     // Refactored to use notifyAll() as we have no other unit test for that method with multiple transactions.
                     vaultService.notifyAll(txs.map { it.tx })
                 }
+                override val vaultQueryService : VaultQueryService = RequeryVaultQueryServiceImpl(dataSourceProps)
             }
         }
     }
@@ -139,7 +138,7 @@ class VaultQueryTests {
             services.fillWithSomeTestDeals(listOf("123", "456", "789"))
 
             // DOCSTART VaultQueryExample1
-            val result = vaultSvc.queryBy<ContractState>()
+            val result = vaultQuerySvc.queryBy<ContractState>()
 
             /**
              * Query result returns a [Vault.Page] which contains:
@@ -166,7 +165,7 @@ class VaultQueryTests {
             services.fillWithSomeTestDeals(listOf("123", "456", "789"))
 
             val criteria = VaultQueryCriteria() // default is UNCONSUMED
-            val result = vaultSvc.queryBy<ContractState>(criteria)
+            val result = vaultQuerySvc.queryBy<ContractState>(criteria)
 
             assertThat(result.states).hasSize(16)
             assertThat(result.statesMetadata).hasSize(16)
@@ -181,7 +180,7 @@ class VaultQueryTests {
             services.fillWithSomeTestLinearStates(10)
             services.fillWithSomeTestDeals(listOf("123", "456", "789"))
 
-            val result = vaultSvc.queryBy<Cash.State>()
+            val result = vaultQuerySvc.queryBy<Cash.State>()
 
             assertThat(result.states).hasSize(3)
             assertThat(result.statesMetadata).hasSize(3)
@@ -197,7 +196,7 @@ class VaultQueryTests {
             services.fillWithSomeTestDeals(listOf("123", "456", "789"))
 
             val criteria = VaultQueryCriteria() // default is UNCONSUMED
-            val result = vaultSvc.queryBy<Cash.State>(criteria)
+            val result = vaultQuerySvc.queryBy<Cash.State>(criteria)
 
             assertThat(result.states).hasSize(3)
             assertThat(result.statesMetadata).hasSize(3)
@@ -214,8 +213,8 @@ class VaultQueryTests {
 
             // DOCSTART VaultQueryExample2
             val criteria = VaultQueryCriteria(stateRefs = listOf(stateRefs.first(), stateRefs.last()))
-//            val results = vaultSvc.queryBy<LinearState>(criteria)
-            val results = vaultSvc.queryBy<DummyLinearContract.State>(criteria)
+//            val results = vaultQuerySvc.queryBy<LinearState>(criteria)
+            val results = vaultQuerySvc.queryBy<DummyLinearContract.State>(criteria)
             // DOCEND VaultQueryExample2
 
             assertThat(results.states).hasSize(2)
@@ -236,7 +235,7 @@ class VaultQueryTests {
             // DOCSTART VaultQueryExample3
 //            val criteria = VaultQueryCriteria(contractStateTypes = setOf(Cash.State::class.java, DealState::class.java))
             val criteria = VaultQueryCriteria(contractStateTypes = setOf(Cash.State::class.java, DummyDealContract.State::class.java))
-            val results = vaultSvc.queryBy<ContractState>(criteria)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria)
             // DOCEND VaultQueryExample3
             assertThat(results.states).hasSize(6)
         }
@@ -256,7 +255,7 @@ class VaultQueryTests {
             services.consumeCash(50.DOLLARS)
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.CONSUMED)
-            val results = vaultSvc.queryBy<ContractState>(criteria)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria)
             assertThat(results.states).hasSize(5)
         }
     }
@@ -275,7 +274,7 @@ class VaultQueryTests {
             services.consumeCash(50.DOLLARS) // generates a new change state!
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.ALL)
-            val results = vaultSvc.queryBy<ContractState>(criteria)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria)
             assertThat(results.states).hasSize(17)
         }
     }
@@ -294,7 +293,7 @@ class VaultQueryTests {
 
             // DOCSTART VaultQueryExample4
             val criteria = VaultQueryCriteria(notaryName = listOf(CASH_NOTARY.name))
-            val results = vaultSvc.queryBy<ContractState>(criteria)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria)
             // DOCEND VaultQueryExample4
             assertThat(results.states).hasSize(3)
         }
@@ -310,7 +309,7 @@ class VaultQueryTests {
 
             // DOCSTART VaultQueryExample5
             val criteria = VaultQueryCriteria(participantIdentities = listOf(MEGA_CORP.name, MINI_CORP.name))
-            val results = vaultSvc.queryBy<ContractState>(criteria)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria)
             // DOCEND VaultQueryExample5
 
             assertThat(results.states).hasSize(3)
@@ -325,7 +324,7 @@ class VaultQueryTests {
             vaultSvc.softLockReserve(UUID.randomUUID(), setOf(issuedStates.states.first().ref, issuedStates.states.last().ref))
 
             val criteria = VaultQueryCriteria(includeSoftlockedStates = false)
-            val results = vaultSvc.queryBy<ContractState>(criteria)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria)
             assertThat(results.states).hasSize(1)
         }
     }
@@ -344,7 +343,7 @@ class VaultQueryTests {
             val recordedBetweenExpression = LogicalExpression(
                     QueryCriteria.TimeInstantType.RECORDED, Operator.BETWEEN, arrayOf(start, end))
             val criteria = VaultQueryCriteria(timeCondition = recordedBetweenExpression)
-            val results = vaultSvc.queryBy<ContractState>(criteria)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria)
             // DOCEND VaultQueryExample6
             assertThat(results.states).hasSize(3)
 
@@ -353,7 +352,7 @@ class VaultQueryTests {
             val recordedBetweenExpressionFuture = LogicalExpression(
                     QueryCriteria.TimeInstantType.RECORDED, Operator.BETWEEN, arrayOf(startFuture, end))
             val criteriaFuture = VaultQueryCriteria(timeCondition = recordedBetweenExpressionFuture)
-            assertThat(vaultSvc.queryBy<ContractState>(criteriaFuture).states).isEmpty()
+            assertThat(vaultQuerySvc.queryBy<ContractState>(criteriaFuture).states).isEmpty()
         }
     }
 
@@ -372,7 +371,7 @@ class VaultQueryTests {
                     QueryCriteria.TimeInstantType.CONSUMED, Operator.GREATER_THAN_OR_EQUAL, arrayOf(asOfDateTime))
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.CONSUMED,
                                               timeCondition = consumedAfterExpression)
-            val results = vaultSvc.queryBy<ContractState>(criteria)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria)
 
             assertThat(results.states).hasSize(3)
         }
@@ -388,7 +387,7 @@ class VaultQueryTests {
             // DOCSTART VaultQueryExample7
             val pagingSpec = PageSpecification(DEFAULT_PAGE_NUM, 10)
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.ALL)
-            val results = vaultSvc.queryBy<ContractState>(criteria, paging = pagingSpec)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria, paging = pagingSpec)
             // DOCEND VaultQueryExample7
             assertThat(results.states).hasSize(10)
             assertThat(results.totalStatesAvailable).isEqualTo(100)
@@ -407,7 +406,7 @@ class VaultQueryTests {
             val pagingSpec = PageSpecification(9, 10)
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.ALL)
-            val results = vaultSvc.queryBy<ContractState>(criteria, paging = pagingSpec)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria, paging = pagingSpec)
             assertThat(results.states).hasSize(5) // should retrieve states 90..94
             assertThat(results.totalStatesAvailable).isEqualTo(95)
         }
@@ -423,7 +422,7 @@ class VaultQueryTests {
             val pagingSpec = PageSpecification(-1, 10)
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.ALL)
-            val results = vaultSvc.queryBy<ContractState>(criteria, paging = pagingSpec)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria, paging = pagingSpec)
             assertThat(results.states).hasSize(10) // should retrieve states 90..99
         }
     }
@@ -438,7 +437,7 @@ class VaultQueryTests {
             val pagingSpec = PageSpecification(0, MAX_PAGE_SIZE+1)
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.ALL)
-            vaultSvc.queryBy<ContractState>(criteria, paging = pagingSpec)
+            vaultQuerySvc.queryBy<ContractState>(criteria, paging = pagingSpec)
             assertFails {  }
         }
     }
@@ -453,7 +452,7 @@ class VaultQueryTests {
             val pagingSpec = PageSpecification(10, 10)  // this requests results 101 .. 110
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.ALL)
-            val results = vaultSvc.queryBy<ContractState>(criteria, paging = pagingSpec)
+            val results = vaultQuerySvc.queryBy<ContractState>(criteria, paging = pagingSpec)
             assertFails { println("Query should throw an exception [${results.states.count()}]") }
         }
     }
@@ -471,7 +470,7 @@ class VaultQueryTests {
             val sortCol2 = Sort.SortColumn("state_status", Sort.Direction.ASC)
             val sortCol3 = Sort.SortColumn("consumed_timestamp", Sort.Direction.DESC, Sort.NullHandling.NULLS_LAST)
             val sorting = Sort(setOf(sortCol1, sortCol2, sortCol3))
-            val result = vaultSvc.queryBy<ContractState>(VaultQueryCriteria(status = Vault.StateStatus.ALL), sorting = sorting)
+            val result = vaultQuerySvc.queryBy<ContractState>(VaultQueryCriteria(status = Vault.StateStatus.ALL), sorting = sorting)
 
             val states = result.states
             val metadata = result.statesMetadata
@@ -500,7 +499,7 @@ class VaultQueryTests {
 //            services.fillWithSomeTestCommodity()
             services.fillWithSomeTestLinearStates(10)
 
-            val results = vaultSvc.queryBy<FungibleAsset<*>>()
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>()
             assertThat(results.states).hasSize(3)
         }
     }
@@ -516,7 +515,7 @@ class VaultQueryTests {
             services.fillWithSomeTestLinearStates(10)
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.CONSUMED)
-            val results = vaultSvc.queryBy<FungibleAsset<*>>(criteria)
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(criteria)
             assertThat(results.states).hasSize(2)
         }
     }
@@ -528,7 +527,7 @@ class VaultQueryTests {
             services.fillWithSomeTestCash(100.DOLLARS, DUMMY_NOTARY, 3, 3, Random(0L))
             services.fillWithSomeTestLinearStates(10)
 
-            val results = vaultSvc.queryBy<Cash.State>()
+            val results = vaultQuerySvc.queryBy<Cash.State>()
             assertThat(results.states).hasSize(3)
         }
     }
@@ -543,7 +542,7 @@ class VaultQueryTests {
 //          services.consumeLinearStates(8)
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.CONSUMED)
-            val results = vaultSvc.queryBy<Cash.State>(criteria)
+            val results = vaultQuerySvc.queryBy<Cash.State>(criteria)
             assertThat(results.states).hasSize(2)
         }
     }
@@ -556,7 +555,7 @@ class VaultQueryTests {
             services.fillWithSomeTestLinearStates(10)
             services.fillWithSomeTestDeals(listOf("123", "456", "789"))
 
-            val results = vaultSvc.queryBy<LinearState>()
+            val results = vaultQuerySvc.queryBy<LinearState>()
             assertThat(results.states).hasSize(13)
         }
     }
@@ -575,7 +574,7 @@ class VaultQueryTests {
             services.consumeCash(50.DOLLARS)
 
             val criteria = VaultQueryCriteria(status = Vault.StateStatus.CONSUMED)
-            val results = vaultSvc.queryBy<LinearState>(criteria)
+            val results = vaultQuerySvc.queryBy<LinearState>(criteria)
             assertThat(results.states).hasSize(3)
         }
     }
@@ -591,7 +590,7 @@ class VaultQueryTests {
             // DOCSTART VaultQueryExample8
             val linearIds = issuedStates.states.map { it.state.data.linearId }.toList()
             val criteria = LinearStateQueryCriteria(linearId = listOf(linearIds.first(), linearIds.last()))
-            val results = vaultSvc.queryBy<LinearState>(criteria)
+            val results = vaultQuerySvc.queryBy<LinearState>(criteria)
             // DOCEND VaultQueryExample8
             assertThat(results.states).hasSize(2)
         }
@@ -611,7 +610,7 @@ class VaultQueryTests {
             val linearStateCriteria = LinearStateQueryCriteria(linearId = txns.states.map { it.state.data.linearId })
             val vaultCriteria = VaultQueryCriteria(status = Vault.StateStatus.ALL)
             val sorting = Sort(setOf(Sort.SortColumn(VaultSchema.VaultLinearState::uuid.name, Sort.Direction.DESC)))
-            val results = vaultSvc.queryBy<LinearState>(linearStateCriteria.and(vaultCriteria), sorting = sorting)
+            val results = vaultQuerySvc.queryBy<LinearState>(linearStateCriteria.and(vaultCriteria), sorting = sorting)
             // DOCEND VaultQueryExample9
             assertThat(results.states).hasSize(4)
         }
@@ -666,7 +665,7 @@ class VaultQueryTests {
 //
 //            val vaultCriteria = VaultQueryCriteria(stateRefs = listOf(stateRefs.first(), stateRefs.last()))
 //            val linearStateCriteria = LinearStateQueryCriteria(latestOnly = true)
-//            val results = vaultSvc.queryBy<LinearState>(vaultCriteria.and(linearStateCriteria))
+//            val results = vaultQuerySvc.queryBy<LinearState>(vaultCriteria.and(linearStateCriteria))
 //            assertThat(results.states).hasSize(2)
 //        }
 //    }
@@ -678,7 +677,7 @@ class VaultQueryTests {
             services.fillWithSomeTestDeals(listOf("123", "456", "789"))
 
             val criteria = LinearStateQueryCriteria()
-            val results = vaultSvc.queryBy<DealState>()
+            val results = vaultQuerySvc.queryBy<DealState>()
             assertThat(results.states).hasSize(3)
         }
     }
@@ -691,7 +690,7 @@ class VaultQueryTests {
 
             // DOCSTART VaultQueryExample10
             val criteria = LinearStateQueryCriteria(dealRef = listOf("456", "789"))
-            val results = vaultSvc.queryBy<DealState>(criteria)
+            val results = vaultQuerySvc.queryBy<DealState>(criteria)
             // DOCEND VaultQueryExample10
 
             assertThat(results.states).hasSize(2)
@@ -707,7 +706,7 @@ class VaultQueryTests {
             services.fillWithSomeTestDeals(listOf("123", "789"))
 
             val criteria = LinearStateQueryCriteria(dealRef = listOf("456"))
-            val results = vaultSvc.queryBy<DealState>(criteria)
+            val results = vaultQuerySvc.queryBy<DealState>(criteria)
             assertThat(results.states).hasSize(1)
         }
     }
@@ -722,7 +721,7 @@ class VaultQueryTests {
 
             // DOCSTART VaultQueryExample11
             val criteria = LinearStateQueryCriteria(dealPartyName = listOf(MEGA_CORP.name, MINI_CORP.name))
-            val results = vaultSvc.queryBy<DealState>(criteria)
+            val results = vaultQuerySvc.queryBy<DealState>(criteria)
             // DOCEND VaultQueryExample11
 
             assertThat(results.states).hasSize(1)
@@ -740,7 +739,7 @@ class VaultQueryTests {
             services.fillWithSomeTestCash(100.SWISS_FRANCS, DUMMY_NOTARY, 3, 3, Random(0L))
 
             val criteria = FungibleAssetQueryCriteria(tokenType = listOf(Currency::class.java))
-            val results = vaultSvc.queryBy<FungibleAsset<*>>(criteria)
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(criteria)
             assertThat(results.states).hasSize(9)
         }
     }
@@ -756,7 +755,7 @@ class VaultQueryTests {
 
             // DOCSTART VaultQueryExample12
             val criteria = FungibleAssetQueryCriteria(tokenValue = listOf(USD.currencyCode))
-            val results = vaultSvc.queryBy<FungibleAsset<*>>(criteria)
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(criteria)
             // DOCEND VaultQueryExample12
 
             assertThat(results.states).hasSize(3)
@@ -776,7 +775,7 @@ class VaultQueryTests {
             // DOCSTART VaultQueryExample13
             val criteria = FungibleAssetQueryCriteria(tokenValue = listOf(GBP.currencyCode),
                                                       quantity = LogicalExpression(this, Operator.GREATER_THAN, 50))
-            val results = vaultSvc.queryBy<Cash.State>(criteria)
+            val results = vaultQuerySvc.queryBy<Cash.State>(criteria)
             // DOCEND VaultQueryExample13
 
             assertThat(results.states).hasSize(1)
@@ -792,7 +791,7 @@ class VaultQueryTests {
             services.fillWithSomeTestCash(100.SWISS_FRANCS, DUMMY_NOTARY, 3, 3, Random(0L))
 
             val criteria = FungibleAssetQueryCriteria(tokenValue = listOf(CHF.currencyCode, GBP.currencyCode))
-            val results = vaultSvc.queryBy<FungibleAsset<*>>(criteria)
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(criteria)
             assertThat(results.states).hasSize(3)
         }
     }
@@ -806,7 +805,7 @@ class VaultQueryTests {
 
             // DOCSTART VaultQueryExample14
             val criteria = FungibleAssetQueryCriteria(issuerPartyName = listOf(BOC.name))
-            val results = vaultSvc.queryBy<FungibleAsset<*>>(criteria)
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(criteria)
             // DOCEND VaultQueryExample14
 
             assertThat(results.states).hasSize(1)
@@ -824,7 +823,7 @@ class VaultQueryTests {
 
             val criteria = FungibleAssetQueryCriteria(issuerPartyName = listOf(BOC.name),
                                                       issuerRef = listOf(BOC.ref(1).reference, BOC.ref(2).reference))
-            val results = vaultSvc.queryBy<FungibleAsset<*>>(criteria)
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(criteria)
             assertThat(results.states).hasSize(2)
         }
     }
@@ -843,7 +842,7 @@ class VaultQueryTests {
 //                    else DUMMY_CASH_ISSUER.party.nameOrNull()
 
             val criteria = FungibleAssetQueryCriteria(exitKeyIdentity = listOf(exitIds))
-            val results = vaultSvc.queryBy<FungibleAsset<*>>(criteria)
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(criteria)
             // DOCEND VaultQueryExample15
 
             assertThat(results.states).hasSize(1)
@@ -859,7 +858,7 @@ class VaultQueryTests {
             // issue some cash to ALICE
 
             val criteria = FungibleAssetQueryCriteria(ownerIdentity = listOf(BOB.name, ALICE.name))
-            val results = vaultSvc.queryBy<FungibleAsset<*>>(criteria)
+            val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(criteria)
             assertThat(results.states).hasSize(1)
         }
     }
@@ -882,15 +881,15 @@ class VaultQueryTests {
                     }.toSignedTransaction()
             services.recordTransactions(commercialPaper)
 
-            val ccyIndex = LogicalExpression(CommercialPaperSchemaV2.PersistentCommercialPaperState2::currency, Operator.EQUAL, USD.currencyCode)
-            val maturityIndex = LogicalExpression(CommercialPaperSchemaV2.PersistentCommercialPaperState2::maturity, Operator.GREATER_THAN_OR_EQUAL, TEST_TX_TIME + 30.days)
-            val faceValueIndex = LogicalExpression(CommercialPaperSchemaV2.PersistentCommercialPaperState2::faceValue, Operator.GREATER_THAN_OR_EQUAL, 10000L)
+            val ccyIndex = LogicalExpression(CommercialPaperSchemaV3.PersistentCommercialPaperState3::currency, Operator.EQUAL, USD.currencyCode)
+            val maturityIndex = LogicalExpression(CommercialPaperSchemaV3.PersistentCommercialPaperState3::maturity, Operator.GREATER_THAN_OR_EQUAL, TEST_TX_TIME + 30.days)
+            val faceValueIndex = LogicalExpression(CommercialPaperSchemaV3.PersistentCommercialPaperState3::faceValue, Operator.GREATER_THAN_OR_EQUAL, 10000L)
 
             val criteria1 = VaultCustomQueryCriteria(ccyIndex)
             val criteria2 = VaultCustomQueryCriteria(maturityIndex)
             val criteria3 = VaultCustomQueryCriteria(faceValueIndex)
 
-            val result = vaultSvc.queryBy<CommercialPaper.State>(criteria1.and(criteria3).or(criteria2))
+            val result = vaultQuerySvc.queryBy<CommercialPaper.State>(criteria1.and(criteria3).or(criteria2))
 
             assertThat(result.states).hasSize(1)
             assertThat(result.statesMetadata).hasSize(1)
@@ -920,7 +919,7 @@ class VaultQueryTests {
             val customCriteria2 = VaultCustomQueryCriteria(quantityIndex)
 
             val criteria = generalCriteria.and(customCriteria1.and(customCriteria2))
-            val results = vaultSvc.queryBy<Cash.State>(criteria)
+            val results = vaultQuerySvc.queryBy<Cash.State>(criteria)
             // DOCEND VaultQueryExample16
 
             assertThat(results.states).hasSize(2)
@@ -951,7 +950,7 @@ class VaultQueryTests {
             val customIndexCriteria2 = VaultCustomQueryCriteria(linearIdCondition)
 
             val criteria = basicCriteria.and(customIndexCriteria1.or(customIndexCriteria2))
-            val results = vaultSvc.queryBy<LinearState>(criteria)
+            val results = vaultQuerySvc.queryBy<LinearState>(criteria)
 
             assertThat(results.states).hasSize(2)
         }
