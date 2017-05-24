@@ -82,6 +82,7 @@ import java.util.stream.Collectors.toList
 import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
 import net.corda.core.crypto.generateKeyPair as cryptoGenerateKeyPair
+import net.corda.node.services.database.HibernateConfiguration
 
 /**
  * A base node implementation that can be customised either for production (with real implementations that do real
@@ -528,7 +529,7 @@ abstract class AbstractNode(open val configuration: NodeConfiguration,
         VaultSoftLockManager(vault, smm)
         CashBalanceAsMetricsObserver(services, database)
         ScheduledActivityObserver(services)
-        HibernateObserver(vault.rawUpdates, schemas)
+        HibernateObserver(vault.rawUpdates, HibernateConfiguration(schemas))
     }
 
     private fun makeInfo(): NodeInfo {
