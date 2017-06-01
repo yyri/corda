@@ -12,6 +12,7 @@ import net.corda.core.serialization.*;
 import net.corda.core.transactions.*;
 import net.corda.node.services.database.*;
 import net.corda.node.services.schema.*;
+import net.corda.node.services.vault.schemas.jpa.*;
 import net.corda.schemas.*;
 import net.corda.testing.node.*;
 import org.bouncycastle.asn1.x500.*;
@@ -147,7 +148,7 @@ public class VaultQueryJavaTests {
             QueryCriteria compositeCriteria = and(dealCriteriaAll, vaultCriteria);
 
             PageSpecification pageSpec  = new PageSpecification(0, getMAX_PAGE_SIZE());
-            Sort.SortColumn sortByUid = new Sort.SortColumn("uuid", Sort.Direction.DESC, Sort.NullHandling.NULLS_LAST);
+            Sort.SortColumn sortByUid = new Sort.SortColumn(VaultSchemaV1.VaultLinearStates.class, "uuid", Sort.Direction.DESC, Sort.NullHandling.NULLS_LAST);
             Sort sorting = new Sort(ImmutableSet.of(sortByUid));
             Vault.Page<ContractState> results = vaultQuerySvc.queryBy(Cash.State.class, compositeCriteria, pageSpec, sorting);
             // DOCEND VaultJavaQueryExample2
@@ -257,7 +258,7 @@ public class VaultQueryJavaTests {
             QueryCriteria compositeCriteria = and(dealCriteriaAll, vaultCriteria);
 
             PageSpecification pageSpec  = new PageSpecification(0, getMAX_PAGE_SIZE());
-            Sort.SortColumn sortByUid = new Sort.SortColumn("uuid", Sort.Direction.DESC, Sort.NullHandling.NULLS_LAST);
+            Sort.SortColumn sortByUid = new Sort.SortColumn(VaultSchemaV1.VaultLinearStates.class, "uuid", Sort.Direction.DESC, Sort.NullHandling.NULLS_LAST);
             Sort sorting = new Sort(ImmutableSet.of(sortByUid));
             Vault.PageAndUpdates<ContractState> results = vaultQuerySvc.trackBy(compositeCriteria, pageSpec, sorting);
 
