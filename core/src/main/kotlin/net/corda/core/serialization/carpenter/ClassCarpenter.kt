@@ -75,11 +75,13 @@ class ClassCarpenter {
 
     val classloader = CarpenterClassLoader()
 
+    fun classLoader() = classloader as ClassLoader
+
     private val _loaded = HashMap<String, Class<*>>()
     private val String.jvm: String get() = replace(".", "/")
 
     /** Returns a snapshot of the currently loaded classes as a map of full class name (package names+dots) -> class object */
-    val loaded: Map<String, Class<*>> = HashMap(_loaded)
+    fun loaded() : Map<String, Class<*>> = HashMap(_loaded)
 
     /**
      * Generate bytecode for the given schema and load into the JVM. The returned class object can be used to
@@ -88,18 +90,17 @@ class ClassCarpenter {
      * @throws DuplicateNameException if the schema's name is already taken in this namespace (you can create a
      * new ClassCarpenter if you're OK with ambiguous names)
      */
-    fun build(schema: Schema): Class<*> {
+    fun build(schema: ClassCarpenterSchema): Class<*> {
         validateSchema(schema)
         // Walk up the inheritance hierarchy and then start walking back down once we either hit the top, or
         // find a class we haven't generated yet.
-        val hierarchy = ArrayList<Schema>()
+        val hierarchy = ArrayList<ClassCarpenterSchema>()
         hierarchy += schema
         var cursor = schema.superclass
         while (cursor != null && cursor.name !in _loaded) {
             hierarchy += cursor
             cursor = cursor.superclass
         }
-
         hierarchy.reversed().forEach {
             when (it) {
                 is InterfaceSchema -> generateInterface(it)
@@ -218,6 +219,7 @@ class ClassCarpenter {
                 visitEnd()
             }
         }
+
     }
 
     private fun ClassWriter.generateAbstractGetters(schema: Schema) {

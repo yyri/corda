@@ -1,10 +1,13 @@
 package net.corda.core.serialization.carpenter
 
+<<<<<<< HEAD
 import jdk.internal.org.objectweb.asm.Opcodes.*
 
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.MethodVisitor
 
+=======
+>>>>>>> Unit Tests for the amqp -> carpenter schema
 import org.objectweb.asm.Type
 import java.util.LinkedHashMap
 

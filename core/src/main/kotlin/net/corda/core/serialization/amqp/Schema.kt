@@ -15,8 +15,7 @@ import java.lang.reflect.Type
 import java.lang.reflect.TypeVariable
 import java.util.*
 
-import net.corda.core.serialization.carpenter.Schema as CarpenterSchema
-import net.corda.core.serialization.carpenter.Field as CarpenterField
+import net.corda.core.serialization.ClassCarpenterSchema
 
 // TODO: get an assigned number as per AMQP spec
 val DESCRIPTOR_TOP_32BITS: Long = 0xc0da0000
@@ -90,9 +89,37 @@ data class Schema(val types: List<TypeNotation>) : DescribedType {
     override fun getDescribed(): Any = listOf(types)
 
     override fun toString(): String = types.joinToString("\n")
+
+    fun carpenterSchema(loaders : List<ClassLoader> = listOf<ClassLoader>(ClassLoader.getSystemClassLoader()))
+            : List<ClassCarpenterSchema>
+    {
+        var rtn = mutableListOf<ClassCarpenterSchema>()
+
+        for (type in types) {
+            if (type is CompositeType) {
+                var foundIt = false
+                for (loader in loaders) {
+                    try {
+                        loader.loadClass(type.name)
+                        foundIt = true
+                        break
+                    } catch (e: ClassNotFoundException) {
+                        continue
+                    }
+                }
+
+                if (foundIt) continue
+                else {
+                    rtn.add(type.carpenterSchema())
+                }
+            }
+        }
+
+        return rtn
+    }
 }
 
-data class Descriptor(val name: String?, val code: UnsignedLong? = null) : DescribedType {
+data class Descriptor(var name: String?, val code: UnsignedLong? = null) : DescribedType {
     companion object : DescribedTypeConstructor<Descriptor> {
         val DESCRIPTOR = UnsignedLong(3L or DESCRIPTOR_TOP_32BITS)
 
@@ -130,7 +157,7 @@ data class Descriptor(val name: String?, val code: UnsignedLong? = null) : Descr
     }
 }
 
-data class Field(val name: String, val type: String, val requires: List<String>, val default: String?, val label: String?, val mandatory: Boolean, val multiple: Boolean) : DescribedType {
+data class Field(var name: String, val type: String, val requires: List<String>, val default: String?, val label: String?, val mandatory: Boolean, val multiple: Boolean) : DescribedType {
     companion object : DescribedTypeConstructor<Field> {
         val DESCRIPTOR = UnsignedLong(4L or DESCRIPTOR_TOP_32BITS)
 
@@ -189,13 +216,13 @@ sealed class TypeNotation : DescribedType {
         }
     }
 
-    abstract val name: String
+    abstract var name: String
     abstract val label: String?
     abstract val provides: List<String>
     abstract val descriptor: Descriptor
 }
 
-data class CompositeType(override val name: String, override val label: String?, override val provides: List<String>, override val descriptor: Descriptor, val fields: List<Field>) : TypeNotation() {
+data class CompositeType(override var name: String, override val label: String?, override val provides: List<String>, override val descriptor: Descriptor, val fields: List<Field>) : TypeNotation() {
     companion object : DescribedTypeConstructor<CompositeType> {
         val DESCRIPTOR = UnsignedLong(5L or DESCRIPTOR_TOP_32BITS)
 
@@ -240,7 +267,7 @@ data class CompositeType(override val name: String, override val label: String?,
     }
 }
 
-data class RestrictedType(override val name: String, override val label: String?, override val provides: List<String>, val source: String, override val descriptor: Descriptor, val choices: List<Choice>) : TypeNotation() {
+data class RestrictedType(override var name: String, override val label: String?, override val provides: List<String>, val source: String, override val descriptor: Descriptor, val choices: List<Choice>) : TypeNotation() {
     companion object : DescribedTypeConstructor<RestrictedType> {
         val DESCRIPTOR = UnsignedLong(6L or DESCRIPTOR_TOP_32BITS)
 
@@ -283,7 +310,7 @@ data class RestrictedType(override val name: String, override val label: String?
     }
 }
 
-data class Choice(val name: String, val value: String) : DescribedType {
+data class Choice(var name: String, val value: String) : DescribedType {
     companion object : DescribedTypeConstructor<Choice> {
         val DESCRIPTOR = UnsignedLong(7L or DESCRIPTOR_TOP_32BITS)
 
