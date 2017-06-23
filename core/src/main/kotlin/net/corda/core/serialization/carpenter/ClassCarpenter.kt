@@ -7,6 +7,10 @@ import org.objectweb.asm.Opcodes.*
 import java.lang.Character.isJavaIdentifierPart
 import java.lang.Character.isJavaIdentifierStart
 
+import net.corda.core.serialization.carpenter.Schema
+import net.corda.core.serialization.carpenter.ClassSchema
+import net.corda.core.serialization.carpenter.InterfaceSchema
+
 import java.util.*
 
 /**
@@ -66,13 +70,21 @@ class CarpenterClassLoader : ClassLoader(Thread.currentThread().contextClassLoad
  *
  * Equals/hashCode methods are not yet supported.
  */
+
+/**********************************************************************************************************************/
+
+class CarpenterClassLoader : ClassLoader(Thread.currentThread().contextClassLoader) {
+    fun load(name: String, bytes: ByteArray) = defineClass(name, bytes, 0, bytes.size)
+}
+
+/**********************************************************************************************************************/
+
 class ClassCarpenter {
     // TODO: Generics.
     // TODO: Sandbox the generated code when a security manager is in use.
     // TODO: Generate equals/hashCode.
     // TODO: Support annotations.
     // TODO: isFoo getter patterns for booleans (this is what Kotlin generates)
-
     val classloader = CarpenterClassLoader()
 
     fun classLoader() = classloader as ClassLoader
@@ -81,7 +93,7 @@ class ClassCarpenter {
     private val String.jvm: String get() = replace(".", "/")
 
     /** Returns a snapshot of the currently loaded classes as a map of full class name (package names+dots) -> class object */
-    fun loaded() : Map<String, Class<*>> = HashMap(_loaded)
+    val loaded: Map<String, Class<*>> = HashMap(_loaded)
 
     /**
      * Generate bytecode for the given schema and load into the JVM. The returned class object can be used to
@@ -90,17 +102,18 @@ class ClassCarpenter {
      * @throws DuplicateNameException if the schema's name is already taken in this namespace (you can create a
      * new ClassCarpenter if you're OK with ambiguous names)
      */
-    fun build(schema: ClassCarpenterSchema): Class<*> {
+    fun build(schema: Schema): Class<*> {
         validateSchema(schema)
         // Walk up the inheritance hierarchy and then start walking back down once we either hit the top, or
         // find a class we haven't generated yet.
-        val hierarchy = ArrayList<ClassCarpenterSchema>()
+        val hierarchy = ArrayList<Schema>()
         hierarchy += schema
         var cursor = schema.superclass
         while (cursor != null && cursor.name !in _loaded) {
             hierarchy += cursor
             cursor = cursor.superclass
         }
+
         hierarchy.reversed().forEach {
             when (it) {
                 is InterfaceSchema -> generateInterface(it)
@@ -202,7 +215,8 @@ class ClassCarpenter {
 
     private fun ClassWriter.generateGetters(schema: Schema) {
         for ((name, type) in schema.fields) {
-            with(visitMethod(ACC_PUBLIC, "get" + name.capitalize(), "()" + type.descriptor, null, null)) {
+            val opcodes    = ACC_PUBLIC
+            with(visitMethod(opcodes, "get" + name.capitalize(), "()" + type.descriptor, null, null)) {
                 type.addNullabilityAnnotation(this)
                 visitCode()
                 visitVarInsn(ALOAD, 0)  // Load 'this'
@@ -219,7 +233,6 @@ class ClassCarpenter {
                 visitEnd()
             }
         }
-
     }
 
     private fun ClassWriter.generateAbstractGetters(schema: Schema) {

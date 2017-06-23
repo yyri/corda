@@ -97,4 +97,3 @@ class TestMetaCarpenter (schemas : CarpenterSchemas) : MetaCarpenterBase (schema
         step (schemas.carpenterSchemas.removeAt(0))
     }
 }
-
