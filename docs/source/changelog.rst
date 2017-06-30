@@ -45,6 +45,9 @@ UNRELEASED
   sub-properties in existing code.
   It is intended that new helper methods will be added shortly to the API to reduce the impact of these changes.
 
+* Data Vending service has been removed in this release to enhance data security. CorDapp developers should use the new
+  ``SendTransactionFlow`` in the flow logic to allow data access from their corresponding counter-flow.
+
 Milestone 13
 ------------
 

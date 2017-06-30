@@ -1,10 +1,14 @@
 package net.corda.core.flows
 
+import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.crypto.SecureHash
 import net.corda.core.getOrThrow
 import net.corda.core.identity.Party
+import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.sequence
+import net.corda.core.utilities.opaque
+import net.corda.node.utilities.transaction
 import net.corda.testing.DUMMY_NOTARY_KEY
 import net.corda.testing.MEGA_CORP
 import net.corda.testing.MEGA_CORP_KEY
@@ -38,6 +42,8 @@ class ResolveTransactionsFlowTest {
         val nodes = mockNet.createSomeNodes()
         a = nodes.partyNodes[0]
         b = nodes.partyNodes[1]
+        a.registerInitiatedFlow(TestResponseFlow::class.java)
+        b.registerInitiatedFlow(TestResponseFlow::class.java)
         notary = nodes.notaryNode.info.notaryIdentity
         mockNet.runNetwork()
     }
@@ -51,7 +57,7 @@ class ResolveTransactionsFlowTest {
     @Test
     fun `resolve from two hashes`() {
         val (stx1, stx2) = makeTransactions()
-        val p = ResolveTransactionsFlow(setOf(stx2.id), a.info.legalIdentity)
+        val p = TestFlow(HashesData(setOf(stx2.id)), a.info.legalIdentity)
         val future = b.services.startFlow(p).resultFuture
         mockNet.runNetwork()
         val results = future.getOrThrow()
@@ -66,7 +72,7 @@ class ResolveTransactionsFlowTest {
     @Test
     fun `dependency with an error`() {
         val stx = makeTransactions(signFirstTX = false).second
-        val p = ResolveTransactionsFlow(setOf(stx.id), a.info.legalIdentity)
+        val p = TestFlow(HashesData(setOf(stx.id)), a.info.legalIdentity)
         val future = b.services.startFlow(p).resultFuture
         mockNet.runNetwork()
         assertFailsWith(SignedTransaction.SignaturesMissingException::class) { future.getOrThrow() }
@@ -75,7 +81,7 @@ class ResolveTransactionsFlowTest {
     @Test
     fun `resolve from a signed transaction`() {
         val (stx1, stx2) = makeTransactions()
-        val p = ResolveTransactionsFlow(stx2, a.info.legalIdentity)
+        val p = TestFlow(stx2, a.info.legalIdentity)
         val future = b.services.startFlow(p).resultFuture
         mockNet.runNetwork()
         future.getOrThrow()
@@ -100,8 +106,7 @@ class ResolveTransactionsFlowTest {
             }
             cursor = stx
         }
-        val p = ResolveTransactionsFlow(setOf(cursor.id), a.info.legalIdentity)
-        p.transactionCountLimit = 40
+        val p = TestFlow(HashesData(setOf(cursor.id)), a.info.legalIdentity, 40)
         val future = b.services.startFlow(p).resultFuture
         mockNet.runNetwork()
         assertFailsWith<ResolveTransactionsFlow.ExcessivelyLargeTransactionGraph> { future.getOrThrow() }
@@ -125,7 +130,7 @@ class ResolveTransactionsFlowTest {
             a.services.recordTransactions(stx2, stx3)
         }
 
-        val p = ResolveTransactionsFlow(setOf(stx3.id), a.info.legalIdentity)
+        val p = TestFlow(HashesData(setOf(stx3.id)), a.info.legalIdentity)
         val future = b.services.startFlow(p).resultFuture
         mockNet.runNetwork()
         future.getOrThrow()
@@ -147,7 +152,7 @@ class ResolveTransactionsFlowTest {
             a.services.attachments.importAttachment(makeJar())
         }
         val stx2 = makeTransactions(withAttachment = id).second
-        val p = ResolveTransactionsFlow(stx2, a.info.legalIdentity)
+        val p = TestFlow(stx2, a.info.legalIdentity)
         val future = b.services.startFlow(p).resultFuture
         mockNet.runNetwork()
         future.getOrThrow()
@@ -169,7 +174,7 @@ class ResolveTransactionsFlowTest {
                     val ptx = megaCorpServices.signInitialTransaction(it)
                     notaryServices.addSignature(ptx)
                 }
-                false ->  {
+                false -> {
                     notaryServices.signInitialTransaction(it)
                 }
             }
@@ -184,4 +189,24 @@ class ResolveTransactionsFlowTest {
         return Pair(dummy1, dummy2)
     }
     // DOCEND 2
+
+    @InitiatingFlow
+    private class TestFlow(private val resolveTransactionsFlow: ResolveTransactionsFlow, val otherSide: Party, private val txCountLimit: Int? = null) : FlowLogic<List<LedgerTransaction>>() {
+        constructor(txHashes: HashesData, otherSide: Party, txCountLimit: Int? = null) : this(ResolveTransactionsFlow(otherSide, txHashes), otherSide, txCountLimit = txCountLimit)
+        constructor(stx: SignedTransaction, otherSide: Party) : this(ResolveTransactionsFlow(otherSide, stx), otherSide)
+
+        @Suspendable
+        override fun call(): List<LedgerTransaction> {
+            txCountLimit?.let { resolveTransactionsFlow.transactionCountLimit = it }
+            return subFlow(resolveTransactionsFlow)
+        }
+    }
+
+    private data class HashesData(override val dependencies: Set<SecureHash>) : ResolvableTransactionData
+
+    @InitiatedBy(TestFlow::class)
+    private class TestResponseFlow(val otherSide: Party) : FlowLogic<Unit>() {
+        @Suspendable
+        override fun call() = subFlow(SendTransactionFlow(otherSide, null))
+    }
 }
