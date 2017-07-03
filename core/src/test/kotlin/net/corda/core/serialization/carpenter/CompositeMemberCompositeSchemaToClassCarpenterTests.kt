@@ -77,17 +77,15 @@ class CompositeMembers : AmqpCarpenterBase() {
     // class in the class path then we must have all of it's constituent elements
     @Test(expected = UncarpentableException::class)
     fun nestedIsUnknown() {
-        val testA = 10
-        val testB = 20
-
         @CordaSerializable
         data class A(override val a: Int) : I_
 
         @CordaSerializable
         data class B(val a: A, var b: Int)
 
+        val testA = 10
+        val testB = 20
         val b = B(A(testA), testB)
-
         val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(b))
         val amqpSchema = obj.envelope.schema.mangleNames(listOf (classTestName ("A")))
 
@@ -98,15 +96,14 @@ class CompositeMembers : AmqpCarpenterBase() {
 
     @Test
     fun ParentIsUnknown() {
-        val testA = 10
-        val testB = 20
-
         @CordaSerializable
         data class A(override val a: Int) : I_
 
         @CordaSerializable
         data class B(val a: A, var b: Int)
 
+        val testA = 10
+        val testB = 20
         val b = B(A(testA), testB)
         val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(b))
 
@@ -126,15 +123,14 @@ class CompositeMembers : AmqpCarpenterBase() {
 
     @Test
     fun BothUnknown() {
-        val testA = 10
-        val testB = 20
-
         @CordaSerializable
         data class A(override val a: Int) : I_
 
         @CordaSerializable
         data class B(val a: A, var b: Int)
 
+        val testA = 10
+        val testB = 20
         val b = B(A(testA), testB)
         val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(b))
 
@@ -181,10 +177,6 @@ class CompositeMembers : AmqpCarpenterBase() {
     @Test(expected = UncarpentableException::class)
     @Suppress("UNUSED")
     fun nestedIsUnknownInherited() {
-        val testA = 10
-        val testB = 20
-        val testC = 30
-
         @CordaSerializable
         open class A(val a: Int)
 
@@ -194,12 +186,16 @@ class CompositeMembers : AmqpCarpenterBase() {
         @CordaSerializable
         data class C(val b: B, var c: Int)
 
+        val testA = 10
+        val testB = 20
+        val testC = 30
         val c = C(B(testA, testB), testC)
         val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(c))
 
         assert(obj.obj is C)
 
         val amqpSchema = obj.envelope.schema.mangleNames(listOf(classTestName("A"), classTestName("B")))
+        val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(c))
 
         amqpSchema.carpenterSchema()
     }
@@ -207,10 +203,6 @@ class CompositeMembers : AmqpCarpenterBase() {
     @Test(expected = UncarpentableException::class)
     @Suppress("UNUSED")
     fun nestedIsUnknownInheritedUnknown() {
-        val testA = 10
-        val testB = 20
-        val testC = 30
-
         @CordaSerializable
         open class A(val a: Int)
 
@@ -220,6 +212,9 @@ class CompositeMembers : AmqpCarpenterBase() {
         @CordaSerializable
         data class C(val b: B, var c: Int)
 
+        val testA = 10
+        val testB = 20
+        val testC = 30
         val c = C(B(testA, testB), testC)
         val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(c))
 
@@ -233,10 +228,6 @@ class CompositeMembers : AmqpCarpenterBase() {
     @Suppress("UNUSED")
     @Test(expected = UncarpentableException::class)
     fun parentsIsUnknownWithUnknownInheritedMember() {
-        val testA = 10
-        val testB = 20
-        val testC = 30
-
         @CordaSerializable
         open class A(val a: Int)
 
@@ -246,6 +237,9 @@ class CompositeMembers : AmqpCarpenterBase() {
         @CordaSerializable
         data class C(val b: B, var c: Int)
 
+        val testA = 10
+        val testB = 20
+        val testC = 30
         val c = C(B(testA, testB), testC)
         val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(c))
 
@@ -257,6 +251,8 @@ class CompositeMembers : AmqpCarpenterBase() {
 
     /*
      * TODO serializer doesn't support inheritnace at the moment, when it does this should work
+     */
+    /*
     @Test
     fun `inheritance`() {
         val testA = 10

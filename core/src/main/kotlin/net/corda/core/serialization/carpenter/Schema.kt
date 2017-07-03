@@ -148,5 +148,3 @@ object FieldFactory {
             if (mandatory) NonNullableField (name, field) else NullableField (name, field)
 
 }
-=======
->>>>>>> Add recursive dependency resolution to schema generation
