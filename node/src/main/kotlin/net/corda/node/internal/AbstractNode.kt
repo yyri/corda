@@ -29,6 +29,7 @@ import net.corda.core.utilities.DUMMY_CA
 import net.corda.core.utilities.debug
 import net.corda.core.utilities.getTestPartyAndCertificate
 import net.corda.flows.*
+import net.corda.node.internal.classloading.AppClassLoader
 import net.corda.node.services.*
 import net.corda.node.services.api.*
 import net.corda.node.services.config.NodeConfiguration
@@ -68,6 +69,7 @@ import org.bouncycastle.asn1.x500.X500Name
 import org.jetbrains.exposed.sql.Database
 import org.slf4j.Logger
 import rx.Observable
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Modifier.*
@@ -84,12 +86,11 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit.SECONDS
+import java.util.jar.JarFile
 import java.util.stream.Collectors.toList
 import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
 import net.corda.core.crypto.generateKeyPair as cryptoGenerateKeyPair
-
-data class AppClassLoader(val version: Int) : ClassLoader()
 
 val appClassLoader = AppClassLoader(1)
 
@@ -553,7 +554,7 @@ abstract class AbstractNode(open val configuration: NodeConfiguration,
         log.info("Scanning CorDapps in $paths")
 
         // This will only scan the plugin jars and nothing else
-        return if (paths.isNotEmpty()) FastClasspathScanner().overrideClasspath(paths).scan() else null
+        return if (paths.isNotEmpty()) FastClasspathScanner().addClassLoader(appClassLoader).overrideClasspath(paths).scan() else null
     }
 
     private fun <T : Any> ScanResult.getClassesWithAnnotation(type: KClass<T>, annotation: KClass<out Annotation>): List<Class<out T>> {
