@@ -301,7 +301,7 @@ class VaultWithCashTest {
             val spendTX = services.addSignature(spendPTX, freshKey)
             services.recordTransactions(spendTX)
 
-            val consumedStates =vaultQuery.queryBy<ContractState>(VaultQueryCriteria(status = Vault.StateStatus.CONSUMED)).states
+            val consumedStates = vaultQuery.queryBy<ContractState>(VaultQueryCriteria(status = Vault.StateStatus.CONSUMED)).states
             assertEquals(3, consumedStates.count())
 
             val unconsumedStates = vaultQuery.queryBy<ContractState>().states
@@ -340,7 +340,7 @@ class VaultWithCashTest {
             val consumedStates = vaultQuery.queryBy<ContractState>(VaultQueryCriteria(status = Vault.StateStatus.CONSUMED)).states
             assertEquals(2, consumedStates.count())
 
-            val unconsumedStates =vaultQuery.queryBy<ContractState>().states
+            val unconsumedStates = vaultQuery.queryBy<ContractState>().states
             assertEquals(6, unconsumedStates.count())
         }
     }
