@@ -346,12 +346,13 @@ class HibernateQueryCriteriaParser(val contractType: Class<out ContractState>,
         return predicateSet
     }
 
-    override fun parse(criteria: QueryCriteria, sorting: Sort?): Pair<List<Root<out Any>>, List<Predicate>> {
+    override fun parse(criteria: QueryCriteria, sorting: Sort?): Triple<List<Root<out Any>>, List<Predicate>, List<Order>> {
         val predicateSet = criteria.visit(this)
 
+        var orderSpec = emptyList<Order>()
         sorting?.let {
             if (sorting.columns.isNotEmpty())
-                parse(sorting)
+                orderSpec = parse(sorting)
         }
 
         val selections =
@@ -363,7 +364,8 @@ class HibernateQueryCriteriaParser(val contractType: Class<out ContractState>,
         val combinedPredicates = joinPredicates.plus(predicateSet)
         criteriaQuery.where(*combinedPredicates.toTypedArray())
 
-        return Pair(selections, combinedPredicates)
+        val selections = listOf(vaultStates).plus(rootEntities.map { it.value })
+        return Triple(selections, combinedPredicates, orderSpec)
     }
 
     override fun parseCriteria(criteria: CommonQueryCriteria): Collection<Predicate> {
@@ -378,7 +380,7 @@ class HibernateQueryCriteriaParser(val contractType: Class<out ContractState>,
         return predicateSet
     }
 
-    private fun parse(sorting: Sort) {
+    private fun parse(sorting: Sort): List<Order> {
         log.trace { "Parsing sorting specification: $sorting" }
 
         var orderCriteria = mutableListOf<Order>()
@@ -413,9 +415,9 @@ class HibernateQueryCriteriaParser(val contractType: Class<out ContractState>,
             }
         }
         if (orderCriteria.isNotEmpty()) {
-            criteriaQuery.orderBy(orderCriteria)
             criteriaQuery.where(*joinPredicates.toTypedArray())
         }
+        return orderCriteria
     }
 
     private fun parse(sortAttribute: Sort.Attribute): Triple<Class<out PersistentState>, String, String?> {

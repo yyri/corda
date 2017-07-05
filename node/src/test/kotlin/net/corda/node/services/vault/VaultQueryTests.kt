@@ -1161,7 +1161,7 @@ class VaultQueryTests {
     }
 
     @Test
-    fun `unconsumed deal states paged and sorted`() {
+    fun `unconsumed deal states sorted`() {
         database.transaction {
 
             val linearStates = services.fillWithSomeTestLinearStates(10)
@@ -1763,7 +1763,8 @@ class VaultQueryTests {
         database.transaction {
 
             services.fillWithSomeTestLinearStates(1, "TEST1")
-            services.fillWithSomeTestLinearStates(1, "TEST2")
+            val aState = services.fillWithSomeTestLinearStates(1, "TEST2").states
+            services.consumeLinearStates(aState.toList())
             val uuid = services.fillWithSomeTestLinearStates(1, "TEST3").states.first().state.data.linearId.id
 
             // 2 unconsumed states with same external ID, 1 with different external ID
