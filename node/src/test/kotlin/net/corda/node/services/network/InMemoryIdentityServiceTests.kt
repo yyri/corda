@@ -1,11 +1,11 @@
 package net.corda.node.services.network
 
 import net.corda.core.crypto.*
+import net.corda.core.identity.AnonymisedIdentity
 import net.corda.core.identity.AnonymousParty
 import net.corda.core.identity.Party
 import net.corda.core.identity.PartyAndCertificate
 import net.corda.core.node.services.IdentityService
-import net.corda.flows.AnonymisedIdentity
 import net.corda.node.services.identity.InMemoryIdentityService
 import net.corda.testing.*
 import org.bouncycastle.asn1.x500.X500Name

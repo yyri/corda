@@ -1,4 +1,4 @@
-package net.corda.flows
+package net.corda.core.identity
 
 import net.corda.core.identity.AnonymousParty
 import net.corda.core.serialization.CordaSerializable

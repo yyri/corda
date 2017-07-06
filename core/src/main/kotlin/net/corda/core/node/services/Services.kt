@@ -9,6 +9,7 @@ import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.keys
 import net.corda.core.flows.FlowException
 import net.corda.core.identity.AbstractParty
+import net.corda.core.identity.AnonymisedIdentity
 import net.corda.core.identity.Party
 import net.corda.core.identity.PartyAndCertificate
 import net.corda.core.messaging.DataFeed
@@ -21,7 +22,6 @@ import net.corda.core.toFuture
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.transactions.WireTransaction
-import net.corda.flows.AnonymisedIdentity
 import rx.Observable
 import rx.subjects.PublishSubject
 import java.io.InputStream

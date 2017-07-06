@@ -5,17 +5,15 @@ import net.corda.core.crypto.DigitalSignature
 import net.corda.core.crypto.generateKeyPair
 import net.corda.core.crypto.keys
 import net.corda.core.crypto.sign
+import net.corda.core.identity.AnonymisedIdentity
 import net.corda.core.identity.PartyAndCertificate
 import net.corda.core.node.services.IdentityService
 import net.corda.core.node.services.KeyManagementService
 import net.corda.core.serialization.SingletonSerializeAsToken
-import net.corda.flows.AnonymisedIdentity
-import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.operator.ContentSigner
 import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.cert.CertPath
 import java.util.*
 import javax.annotation.concurrent.ThreadSafe
 
