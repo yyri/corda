@@ -39,7 +39,7 @@ open class CashPaymentFlow(
         } else {
             emptyMap<Party, AnonymisedIdentity>()
         }
-        val anonymousRecipient = txIdentities.get(recipient)?.identity ?: recipient
+        val anonymousRecipient = txIdentities.get(recipient)?.party ?: recipient
         progressTracker.currentStep = GENERATING_TX
         val builder: TransactionBuilder = TransactionType.General.Builder(null as Party?)
         // TODO: Have some way of restricting this to states the caller controls

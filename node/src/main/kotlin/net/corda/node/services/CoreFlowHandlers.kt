@@ -138,7 +138,7 @@ class TransactionKeyHandler(val otherSide: Party, val revocationEnabled: Boolean
         progressTracker.currentStep = SENDING_KEY
         val legalIdentityAnonymous = serviceHub.keyManagementService.freshKeyAndCert(serviceHub.myInfo.legalIdentityAndCert, revocationEnabled)
         val otherSideAnonymous = sendAndReceive<AnonymisedIdentity>(otherSide, legalIdentityAnonymous).unwrap { TransactionKeyFlow.validateIdentity(otherSide, it) }
-        val (certPath, theirCert, txIdentity) = otherSideAnonymous
+        val (txIdentity, theirCert, certPath) = otherSideAnonymous
         // Validate then store their identity so that we can prove the key in the transaction is owned by the
         // counterparty.
         serviceHub.identityService.registerAnonymousIdentity(txIdentity, otherSide, certPath)

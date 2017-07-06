@@ -8,9 +8,9 @@ import java.security.cert.CertPath
 
 @CordaSerializable
 data class AnonymisedIdentity(
-        val certPath: CertPath,
+        val party: AnonymousParty,
         val certificate: X509CertificateHolder,
-        val identity: AnonymousParty) {
+        val certPath: CertPath) {
     constructor(certPath: CertPath, certificate: X509CertificateHolder, identity: PublicKey)
-            : this(certPath, certificate, AnonymousParty(identity))
+            : this(AnonymousParty(identity), certificate, certPath)
 }

@@ -113,24 +113,24 @@ class InMemoryIdentityServiceTests {
 
         // Now we have identities, construct the service and let it know about both
         val service = InMemoryIdentityService(setOf(alice, bob), emptyMap(), trustRoot.certificate.cert)
-        service.registerAnonymousIdentity(aliceTxIdentity.identity, alice.party, aliceTxIdentity.certPath)
+        service.registerAnonymousIdentity(aliceTxIdentity.party, alice.party, aliceTxIdentity.certPath)
 
         val anonymousBob = AnonymousParty(bobTxKey.public)
         service.registerAnonymousIdentity(anonymousBob, bob.party, bobCertPath)
 
         // Verify that paths are verified
-        service.assertOwnership(alice.party, aliceTxIdentity.identity)
+        service.assertOwnership(alice.party, aliceTxIdentity.party)
         service.assertOwnership(bob.party, anonymousBob)
         assertFailsWith<IllegalArgumentException> {
             service.assertOwnership(alice.party, anonymousBob)
         }
         assertFailsWith<IllegalArgumentException> {
-            service.assertOwnership(bob.party, aliceTxIdentity.identity)
+            service.assertOwnership(bob.party, aliceTxIdentity.party)
         }
 
         assertFailsWith<IllegalArgumentException> {
             val owningKey = Crypto.decodePublicKey(trustRoot.certificate.subjectPublicKeyInfo.encoded)
-            service.assertOwnership(Party(trustRoot.certificate.subject, owningKey), aliceTxIdentity.identity)
+            service.assertOwnership(Party(trustRoot.certificate.subject, owningKey), aliceTxIdentity.party)
         }
     }
 
@@ -141,7 +141,7 @@ class InMemoryIdentityServiceTests {
         val txKey = Crypto.generateKeyPair()
         val txCert = X509Utilities.createCertificate(CertificateType.IDENTITY, issuer.certificate, issuerKeyPair, x500Name, txKey.public)
         val txCertPath = certFactory.generateCertPath(listOf(txCert.cert) + issuer.certPath.certificates)
-        return Pair(issuer, AnonymisedIdentity(txCertPath, txCert, AnonymousParty(txKey.public)))
+        return Pair(issuer, AnonymisedIdentity(AnonymousParty(txKey.public), txCert, txCertPath))
     }
 
     /**
