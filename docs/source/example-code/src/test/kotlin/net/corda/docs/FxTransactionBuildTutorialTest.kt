@@ -37,7 +37,6 @@ class FxTransactionBuildTutorialTest {
 
     @After
     fun cleanUp() {
-        println("Close DB")
         mockNet.stopNodes()
     }
 
