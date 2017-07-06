@@ -332,15 +332,17 @@ fun signAll(transactionsToSign: List<WireTransaction>, extraKeys: List<KeyPair>)
     check(wtx.mustSign.isNotEmpty())
     val bits = wtx.serialize()
     require(bits == wtx.serialized)
-    val signatures = ArrayList<DigitalSignature.WithKey>()
+    val signatures = ArrayList<TransactionSignature>()
     val keyLookup = HashMap<PublicKey, KeyPair>()
 
     (ALL_TEST_KEYS + extraKeys).forEach {
         keyLookup[it.public] = it
     }
+
+    val merkleRootWithMeta = MerkleRootWithMeta(wtx.id, TransactionSignatureMeta(1))
     wtx.mustSign.expandedCompositeKeys.forEach {
         val key = keyLookup[it] ?: throw IllegalArgumentException("Missing required key for ${it.toStringShort()}")
-        signatures += key.sign(wtx.id)
+        signatures += key.sign(merkleRootWithMeta)
     }
     SignedTransaction(bits, signatures)
 }

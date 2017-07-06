@@ -9,6 +9,7 @@ import net.corda.core.crypto.DigitalSignature
 import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.sign
 import net.corda.core.crypto.toStringShort
+import net.corda.core.crypto.*
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.InitiatedBy
 import net.corda.core.flows.InitiatingFlow
@@ -588,16 +589,17 @@ class TwoPartyTradeFlowTests {
         val signed = wtxToSign.map {
             val bits = it.serialize()
             val id = it.id
-            val sigs = mutableListOf<DigitalSignature.WithKey>()
-            sigs.add(node.services.keyManagementService.sign(id.bytes, node.services.legalIdentityKey))
-            sigs.add(notaryNode.services.keyManagementService.sign(id.bytes, notaryNode.services.notaryIdentityKey))
+            val sigs = mutableListOf<TransactionSignature>()
+            val merkleRootWithMeta = MerkleRootWithMeta(id, TransactionSignatureMeta(1))
+            sigs.add(node.services.keyManagementService.sign(merkleRootWithMeta, node.services.legalIdentityKey))
+            sigs.add(notaryNode.services.keyManagementService.sign(merkleRootWithMeta, notaryNode.services.notaryIdentityKey))
             for (extraKey in extraKeys) {
                 if (extraKey == DUMMY_CASH_ISSUER_KEY.public) {
-                    sigs.add(DUMMY_CASH_ISSUER_KEY.sign(id.bytes))
+                    sigs.add(DUMMY_CASH_ISSUER_KEY.sign(merkleRootWithMeta))
                 } else if (extraKey == MEGA_CORP_PUBKEY) {
-                    sigs.add(MEGA_CORP_KEY.sign(id.bytes))
+                    sigs.add(MEGA_CORP_KEY.sign(merkleRootWithMeta))
                 } else {
-                    sigs.add(node.services.keyManagementService.sign(id.bytes, extraKey))
+                    sigs.add(node.services.keyManagementService.sign(merkleRootWithMeta, extraKey))
                 }
             }
             SignedTransaction(bits, sigs)

@@ -2,17 +2,19 @@ package net.corda.node.services.persistence
 
 import net.corda.core.contracts.StateRef
 import net.corda.core.contracts.TransactionType
-import net.corda.core.crypto.DigitalSignature
 import net.corda.core.crypto.SecureHash
+import net.corda.core.crypto.TransactionSignature
+import net.corda.core.crypto.TransactionSignatureMeta
 import net.corda.core.crypto.testing.NullPublicKey
 import net.corda.core.toFuture
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.WireTransaction
-import net.corda.testing.DUMMY_NOTARY
-import net.corda.testing.LogHelper
 import net.corda.node.services.transactions.PersistentUniquenessProvider
 import net.corda.node.utilities.CordaPersistence
 import net.corda.node.utilities.configureDatabase
+import net.corda.node.utilities.transaction
+import net.corda.testing.DUMMY_NOTARY
+import net.corda.testing.LogHelper
 import net.corda.testing.node.makeTestDataSourceProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
@@ -151,6 +153,6 @@ class DBTransactionStorageTests {
                 type = TransactionType.General,
                 timeWindow = null
         )
-        return SignedTransaction(wtx.serialized, listOf(DigitalSignature.WithKey(NullPublicKey, ByteArray(1))))
+        return SignedTransaction(wtx.serialized, listOf(TransactionSignature(ByteArray(1), NullPublicKey, TransactionSignatureMeta(1))))
     }
 }

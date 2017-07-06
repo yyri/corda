@@ -7,8 +7,8 @@ import net.corda.contracts.asset.Cash;
 import net.corda.core.contracts.*;
 import net.corda.core.contracts.TransactionType.General;
 import net.corda.core.contracts.TransactionType.NotaryChange;
-import net.corda.core.crypto.DigitalSignature;
 import net.corda.core.crypto.SecureHash;
+import net.corda.core.crypto.TransactionSignature;
 import net.corda.core.flows.*;
 import net.corda.core.identity.Party;
 import net.corda.core.node.services.ServiceType;
@@ -25,14 +25,12 @@ import net.corda.core.utilities.UntrustworthyData;
 import net.corda.testing.contracts.DummyContract;
 import net.corda.testing.contracts.DummyState;
 import org.bouncycastle.asn1.x500.X500Name;
-
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 import static net.corda.testing.TestConstants.getDUMMY_PUBKEY_1;
 
@@ -383,11 +381,11 @@ public class FlowCookbookJava {
             // node does not need to check we haven't changed anything in the
             // transaction.
             // DOCSTART 40
-            DigitalSignature.WithKey sig = getServiceHub().createSignature(onceSignedTx);
+            TransactionSignature sig = getServiceHub().createSignature(onceSignedTx);
             // DOCEND 40
             // And again, if we wanted to use a different public key:
             // DOCSTART 41
-            DigitalSignature.WithKey sig2 = getServiceHub().createSignature(onceSignedTx, otherKey2);
+            TransactionSignature sig2 = getServiceHub().createSignature(onceSignedTx, otherKey2);
             // DOCEND 41
 
             /*----------------------------

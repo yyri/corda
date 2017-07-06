@@ -1,10 +1,7 @@
 package net.corda.node.services.keys
 
 import net.corda.core.ThreadBox
-import net.corda.core.crypto.DigitalSignature
-import net.corda.core.crypto.generateKeyPair
-import net.corda.core.crypto.keys
-import net.corda.core.crypto.sign
+import net.corda.core.crypto.*
 import net.corda.core.identity.PartyAndCertificate
 import net.corda.core.node.services.IdentityService
 import net.corda.core.node.services.KeyManagementService
@@ -75,7 +72,11 @@ class E2ETestKeyManagementService(val identityService: IdentityService,
 
     override fun sign(bytes: ByteArray, publicKey: PublicKey): DigitalSignature.WithKey {
         val keyPair = getSigningKeyPair(publicKey)
-        val signature = keyPair.sign(bytes)
-        return signature
+        return keyPair.sign(bytes)
+    }
+
+    override fun sign(merkleRootWithMeta: MerkleRootWithMeta, publicKey: PublicKey): TransactionSignature {
+        val keyPair = getSigningKeyPair(publicKey)
+        return keyPair.sign(merkleRootWithMeta)
     }
 }

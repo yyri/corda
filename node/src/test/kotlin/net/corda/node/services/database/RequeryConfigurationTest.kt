@@ -5,11 +5,9 @@ import io.requery.kotlin.eq
 import io.requery.sql.KotlinEntityDataStore
 import net.corda.core.contracts.StateRef
 import net.corda.core.contracts.TransactionType
+import net.corda.core.crypto.*
 import net.corda.testing.contracts.DummyContract
-import net.corda.core.crypto.DigitalSignature
-import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.testing.NullPublicKey
-import net.corda.core.crypto.toBase58String
 import net.corda.core.identity.AnonymousParty
 import net.corda.core.node.services.Vault
 import net.corda.core.serialization.serialize
@@ -214,6 +212,6 @@ class RequeryConfigurationTest {
                 type = TransactionType.General,
                 timeWindow = null
         )
-        return SignedTransaction(wtx.serialized, listOf(DigitalSignature.WithKey(NullPublicKey, ByteArray(1))))
+        return SignedTransaction(wtx.serialized, listOf(TransactionSignature(ByteArray(1), NullPublicKey, TransactionSignatureMeta(1))))
     }
 }

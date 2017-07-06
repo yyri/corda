@@ -73,6 +73,9 @@ val DUMMY_CA: CertificateAndKeyPair by lazy {
     CertificateAndKeyPair(cert, DUMMY_CA_KEY)
 }
 
+val DUMMY_IDENTITY_1: PartyAndCertificate get() = getTestPartyAndCertificate(DUMMY_PARTY)
+val DUMMY_PARTY: Party get() = Party(X500Name("CN=Dummy,O=Dummy,L=Madrid,C=ES"), DUMMY_KEY_1.public)
+
 //
 // Extensions to the Driver DSL to auto-manufacture nodes by name.
 //
