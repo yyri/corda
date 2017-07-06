@@ -9,7 +9,7 @@ import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.keys
 import net.corda.core.flows.FlowException
 import net.corda.core.identity.AbstractParty
-import net.corda.core.identity.AnonymisedIdentity
+import net.corda.core.identity.AnonymousPartyAndCertificate
 import net.corda.core.identity.Party
 import net.corda.core.identity.PartyAndCertificate
 import net.corda.core.messaging.DataFeed
@@ -493,7 +493,7 @@ interface KeyManagementService {
      * @return X.509 certificate and path to the trust root.
      */
     @Suspendable
-    fun freshKeyAndCert(identity: PartyAndCertificate, revocationEnabled: Boolean): AnonymisedIdentity
+    fun freshKeyAndCert(identity: PartyAndCertificate, revocationEnabled: Boolean): AnonymousPartyAndCertificate
 
     /**
      * Filter some keys down to the set that this node owns (has private keys for).

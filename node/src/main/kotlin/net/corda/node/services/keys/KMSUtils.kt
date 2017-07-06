@@ -1,7 +1,7 @@
 package net.corda.node.services.keys
 
 import net.corda.core.crypto.*
-import net.corda.core.identity.AnonymisedIdentity
+import net.corda.core.identity.AnonymousPartyAndCertificate
 import net.corda.core.identity.AnonymousParty
 import net.corda.core.identity.PartyAndCertificate
 import net.corda.core.node.services.IdentityService
@@ -28,7 +28,7 @@ fun freshCertificate(identityService: IdentityService,
                      subjectPublicKey: PublicKey,
                      issuer: PartyAndCertificate,
                      issuerSigner: ContentSigner,
-                     revocationEnabled: Boolean = false): AnonymisedIdentity {
+                     revocationEnabled: Boolean = false): AnonymousPartyAndCertificate {
     val issuerCertificate = issuer.certificate
     val window = X509Utilities.getCertificateValidityWindow(Duration.ZERO, Duration.ofDays(10 * 365), issuerCertificate)
     val ourCertificate = Crypto.createCertificate(CertificateType.IDENTITY, issuerCertificate.subject, issuerSigner, issuer.name, subjectPublicKey, window)
@@ -37,7 +37,7 @@ fun freshCertificate(identityService: IdentityService,
     identityService.registerAnonymousIdentity(AnonymousParty(subjectPublicKey),
             issuer.party,
             ourCertPath)
-    return AnonymisedIdentity(ourCertPath, issuerCertificate, subjectPublicKey)
+    return AnonymousPartyAndCertificate(ourCertPath, issuerCertificate, subjectPublicKey)
 }
 
 fun getSigner(issuerKeyPair: KeyPair): ContentSigner {

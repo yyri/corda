@@ -6,7 +6,7 @@ import net.corda.core.contracts.Amount
 import net.corda.core.contracts.TransactionType
 import net.corda.core.contracts.issuedBy
 import net.corda.core.flows.StartableByRPC
-import net.corda.core.identity.AnonymisedIdentity
+import net.corda.core.identity.AnonymousPartyAndCertificate
 import net.corda.core.identity.Party
 import net.corda.core.serialization.OpaqueBytes
 import net.corda.core.transactions.TransactionBuilder
@@ -44,7 +44,7 @@ class CashIssueFlow(val amount: Amount<Currency>,
         val txIdentities = if (anonymous) {
             subFlow(TransactionKeyFlow(recipient))
         } else {
-            emptyMap<Party, AnonymisedIdentity>()
+            emptyMap<Party, AnonymousPartyAndCertificate>()
         }
         val anonymousRecipient = txIdentities.get(recipient)?.party ?: recipient
         progressTracker.currentStep = GENERATING_TX
