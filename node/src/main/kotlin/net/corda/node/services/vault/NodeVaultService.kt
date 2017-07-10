@@ -67,16 +67,16 @@ class NodeVaultService(private val services: ServiceHub, dataSourceProperties: P
     val session = configuration.sessionForModel(Models.VAULT)
 
     private class InnerState {
-        val _updatesPublisher = PublishSubject.create<Vault.Update>()!!
-        val _rawUpdatesPublisher = PublishSubject.create<Vault.Update>()!!
+        val _updatesPublisher = PublishSubject.create<Vault.Update<ContractState>>()!!
+        val _rawUpdatesPublisher = PublishSubject.create<Vault.Update<ContractState>>()!!
         val _updatesInDbTx = _updatesPublisher.wrapWithDatabaseTransaction().asObservable()!!
 
         // For use during publishing only.
-        val updatesPublisher: rx.Observer<Vault.Update> get() = _updatesPublisher.bufferUntilDatabaseCommit().tee(_rawUpdatesPublisher)
+        val updatesPublisher: rx.Observer<Vault.Update<ContractState>> get() = _updatesPublisher.bufferUntilDatabaseCommit().tee(_rawUpdatesPublisher)
     }
     private val mutex = ThreadBox(InnerState())
 
-    private fun recordUpdate(update: Vault.Update): Vault.Update {
+    private fun recordUpdate(update: Vault.Update<ContractState>): Vault.Update<ContractState> {
         if (update != Vault.NoUpdate) {
             val producedStateRefs = update.produced.map { it.ref }
             val producedStateRefsMap = update.produced.associateBy { it.ref }
@@ -122,7 +122,7 @@ class NodeVaultService(private val services: ServiceHub, dataSourceProperties: P
     // TODO: consider moving this logic outside the vault
     // TODO: revisit the concurrency safety of this logic when we move beyond single threaded SMM.
     //       For example, we update currency totals in a non-deterministic order and so expose ourselves to deadlock.
-    private fun maybeUpdateCashBalances(update: Vault.Update) {
+    private fun maybeUpdateCashBalances(update: Vault.Update<ContractState>) {
         if (update.containsType<Cash.State>()) {
             val consumed = sumCashStates(update.consumed)
             val produced = sumCashStates(update.produced)
@@ -164,16 +164,16 @@ class NodeVaultService(private val services: ServiceHub, dataSourceProperties: P
                 { Amount(it.amount, Currency.getInstance(it.currency)) })
     }
 
-    override val rawUpdates: Observable<Vault.Update>
+    override val rawUpdates: Observable<Vault.Update<ContractState>>
         get() = mutex.locked { _rawUpdatesPublisher }
 
-    override val updates: Observable<Vault.Update>
+    override val updates: Observable<Vault.Update<ContractState>>
         get() = mutex.locked { _updatesInDbTx }
 
-    override val updatesPublisher: PublishSubject<Vault.Update>
+    override val updatesPublisher: PublishSubject<Vault.Update<ContractState>>
         get() = mutex.locked { _updatesPublisher }
 
-    override fun track(): DataFeed<Vault<ContractState>, Vault.Update> {
+    override fun track(): DataFeed<Vault<ContractState>, Vault.Update<ContractState>> {
         return mutex.locked {
             DataFeed(Vault(unconsumedStates<ContractState>()), _updatesPublisher.bufferUntilSubscribed().wrapWithDatabaseTransaction())
         }
@@ -461,7 +461,7 @@ class NodeVaultService(private val services: ServiceHub, dataSourceProperties: P
     private fun deriveState(txState: TransactionState<Cash.State>, amount: Amount<Issued<Currency>>, owner: AbstractParty)
             = txState.copy(data = txState.data.copy(amount = amount, owner = owner))
 
-    private fun makeUpdate(tx: WireTransaction, ourKeys: Set<PublicKey>): Vault.Update {
+    private fun makeUpdate(tx: WireTransaction, ourKeys: Set<PublicKey>): Vault.Update<ContractState> {
         val ourNewStates = tx.outputs.
                 filter { isRelevant(it.data, ourKeys) }.
                 map { tx.outRef<ContractState>(it.data) }

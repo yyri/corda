@@ -65,7 +65,7 @@ class Vault<out T : ContractState>(val states: Iterable<StateAndRef<T>>) {
      * other transactions observed, then the changes are observed "net" of those.
      */
     @CordaSerializable
-    data class Update(val consumed: Set<StateAndRef<ContractState>>, val produced: Set<StateAndRef<ContractState>>, val flowId: UUID? = null) {
+    data class Update<U : ContractState>(val consumed: Set<StateAndRef<U>>, val produced: Set<StateAndRef<U>>, val flowId: UUID? = null) {
         /** Checks whether the update contains a state of the specified type. */
         inline fun <reified T : ContractState> containsType() = consumed.any { it.state.data is T } || produced.any { it.state.data is T }
 
@@ -84,8 +84,8 @@ class Vault<out T : ContractState>(val states: Iterable<StateAndRef<T>>) {
          *
          * i.e. the net effect in terms of state live-ness of receiving the combined update is the same as receiving this followed by rhs.
          */
-        operator fun plus(rhs: Update): Update {
-            val combined = Vault.Update(
+        operator fun plus(rhs: Update<U>): Update<U> {
+            val combined = Vault.Update<U>(
                     consumed + (rhs.consumed - produced),
                     // The ordering below matters to preserve ordering of consumed/produced Sets when they are insertion order dependent implementations.
                     produced.filter { it !in rhs.consumed }.toSet() + rhs.produced)
@@ -105,7 +105,7 @@ class Vault<out T : ContractState>(val states: Iterable<StateAndRef<T>>) {
     }
 
     companion object {
-        val NoUpdate = Update(emptySet(), emptySet())
+        val NoUpdate = Update<ContractState>(emptySet(), emptySet())
     }
 
     @CordaSerializable
@@ -167,18 +167,18 @@ interface VaultService {
      * JVM or across to another [Thread] which is executing in a different database transaction) then the Vault may
      * not incorporate the update due to racing with committing the current database transaction.
      */
-    val rawUpdates: Observable<Vault.Update>
+    val rawUpdates: Observable<Vault.Update<ContractState>>
 
     /**
      * Get a synchronous Observable of updates.  When observations are pushed to the Observer, the Vault will already incorporate
      * the update, and the database transaction associated with the update will have been committed and closed.
      */
-    val updates: Observable<Vault.Update>
+    val updates: Observable<Vault.Update<ContractState>>
 
     /**
      * Enable creation of observables of updates.
      */
-    val updatesPublisher: PublishSubject<Vault.Update>
+    val updatesPublisher: PublishSubject<Vault.Update<ContractState>>
 
     /**
      * Returns a map of how much cash we have in each currency, ignoring details like issuer. Note: currencies for
@@ -192,7 +192,7 @@ interface VaultService {
      */
     // TODO: Remove this from the interface
     @Deprecated("This function will be removed in a future milestone", ReplaceWith("trackBy(QueryCriteria())"))
-    fun track(): DataFeed<Vault<ContractState>, Vault.Update>
+    fun track(): DataFeed<Vault<ContractState>, Vault.Update<ContractState>>
 
     /**
      * Return unconsumed [ContractState]s for a given set of [StateRef]s
@@ -215,7 +215,7 @@ interface VaultService {
     /**
      * Provide a [Future] for when a [StateRef] is consumed, which can be very useful in building tests.
      */
-    fun whenConsumed(ref: StateRef): ListenableFuture<Vault.Update> {
+    fun whenConsumed(ref: StateRef): ListenableFuture<Vault.Update<ContractState>> {
         return updates.filter { it.consumed.any { it.ref == ref } }.toFuture()
     }
 
@@ -386,7 +386,7 @@ interface VaultQueryService {
     fun <T : ContractState> _trackBy(criteria: QueryCriteria,
                                      paging: PageSpecification,
                                      sorting: Sort,
-                                     contractType: Class<out T>): DataFeed<Vault.Page<T>, Vault.Update>
+                                     contractType: Class<out T>): DataFeed<Vault.Page<T>, Vault.Update<T>>
     // DOCEND VaultQueryAPI
 
     // Note: cannot apply @JvmOverloads to interfaces nor interface implementations
@@ -407,19 +407,19 @@ interface VaultQueryService {
         return _queryBy(criteria, paging, sorting, contractType)
     }
 
-    fun <T : ContractState> trackBy(contractType: Class<out T>): DataFeed<Vault.Page<T>, Vault.Update> {
+    fun <T : ContractState> trackBy(contractType: Class<out T>): DataFeed<Vault.Page<T>, Vault.Update<T>> {
         return _trackBy(QueryCriteria.VaultQueryCriteria(), PageSpecification(), Sort(emptySet()), contractType)
     }
-    fun <T : ContractState> trackBy(contractType: Class<out T>, criteria: QueryCriteria): DataFeed<Vault.Page<T>, Vault.Update> {
+    fun <T : ContractState> trackBy(contractType: Class<out T>, criteria: QueryCriteria): DataFeed<Vault.Page<T>, Vault.Update<T>> {
         return _trackBy(criteria, PageSpecification(), Sort(emptySet()), contractType)
     }
-    fun <T : ContractState> trackBy(contractType: Class<out T>, criteria: QueryCriteria, paging: PageSpecification): DataFeed<Vault.Page<T>, Vault.Update> {
+    fun <T : ContractState> trackBy(contractType: Class<out T>, criteria: QueryCriteria, paging: PageSpecification): DataFeed<Vault.Page<T>, Vault.Update<T>> {
         return _trackBy(criteria, paging, Sort(emptySet()), contractType)
     }
-    fun <T : ContractState> trackBy(contractType: Class<out T>, criteria: QueryCriteria, sorting: Sort): DataFeed<Vault.Page<T>, Vault.Update> {
+    fun <T : ContractState> trackBy(contractType: Class<out T>, criteria: QueryCriteria, sorting: Sort): DataFeed<Vault.Page<T>, Vault.Update<T>> {
         return _trackBy(criteria, PageSpecification(), sorting, contractType)
     }
-    fun <T : ContractState> trackBy(contractType: Class<out T>, criteria: QueryCriteria, paging: PageSpecification, sorting: Sort): DataFeed<Vault.Page<T>, Vault.Update> {
+    fun <T : ContractState> trackBy(contractType: Class<out T>, criteria: QueryCriteria, paging: PageSpecification, sorting: Sort): DataFeed<Vault.Page<T>, Vault.Update<T>> {
         return _trackBy(criteria, paging, sorting, contractType)
     }
 }
@@ -444,27 +444,27 @@ inline fun <reified T : ContractState> VaultQueryService.queryBy(criteria: Query
     return _queryBy(criteria, paging, sorting, T::class.java)
 }
 
-inline fun <reified T : ContractState> VaultQueryService.trackBy(): DataFeed<Vault.Page<T>, Vault.Update> {
+inline fun <reified T : ContractState> VaultQueryService.trackBy(): DataFeed<Vault.Page<T>, Vault.Update<T>> {
     return _trackBy(QueryCriteria.VaultQueryCriteria(), PageSpecification(), Sort(emptySet()), T::class.java)
 }
 
-inline fun <reified T : ContractState> VaultQueryService.trackBy(criteria: QueryCriteria): DataFeed<Vault.Page<T>, Vault.Update> {
+inline fun <reified T : ContractState> VaultQueryService.trackBy(criteria: QueryCriteria): DataFeed<Vault.Page<T>, Vault.Update<T>> {
     return _trackBy(criteria, PageSpecification(), Sort(emptySet()), T::class.java)
 }
 
-inline fun <reified T : ContractState> VaultQueryService.trackBy(criteria: QueryCriteria, paging: PageSpecification): DataFeed<Vault.Page<T>, Vault.Update> {
+inline fun <reified T : ContractState> VaultQueryService.trackBy(criteria: QueryCriteria, paging: PageSpecification): DataFeed<Vault.Page<T>, Vault.Update<T>> {
     return _trackBy(criteria, paging, Sort(emptySet()), T::class.java)
 }
 
-inline fun <reified T : ContractState> VaultQueryService.trackBy(criteria: QueryCriteria, sorting: Sort): DataFeed<Vault.Page<T>, Vault.Update> {
+inline fun <reified T : ContractState> VaultQueryService.trackBy(criteria: QueryCriteria, sorting: Sort): DataFeed<Vault.Page<T>, Vault.Update<T>> {
     return _trackBy(criteria, PageSpecification(), sorting, T::class.java)
 }
 
-inline fun <reified T : ContractState> VaultQueryService.trackBy(criteria: QueryCriteria, paging: PageSpecification, sorting: Sort): DataFeed<Vault.Page<T>, Vault.Update> {
+inline fun <reified T : ContractState> VaultQueryService.trackBy(criteria: QueryCriteria, paging: PageSpecification, sorting: Sort): DataFeed<Vault.Page<T>, Vault.Update<T>> {
     return _trackBy(criteria, paging, sorting, T::class.java)
 }
 
-class VaultQueryException(description: String) : FlowException("$description")
+class VaultQueryException(description: String) : FlowException(description)
 
 /**
  * The KMS is responsible for storing and using private keys to sign things. An implementation of this may, for example,

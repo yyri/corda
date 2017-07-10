@@ -3,6 +3,7 @@ package net.corda.docs
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import net.corda.contracts.asset.Cash
+import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.DOLLARS
 import net.corda.core.getOrThrow
 import net.corda.core.messaging.startFlow
@@ -81,7 +82,7 @@ class IntegrationTestingTutorial {
                 parallel(
                         (1..10).map { i ->
                             expect(
-                                    match = { update: Vault.Update ->
+                                    match = { update: Vault.Update<ContractState> ->
                                         (update.produced.first().state.data as Cash.State).amount.quantity == i * 100L
                                     }
                             ) { update ->
@@ -100,7 +101,7 @@ class IntegrationTestingTutorial {
             aliceVaultUpdates.expectEvents {
                 sequence(
                         (1..10).map { i ->
-                            expect { update: Vault.Update ->
+                            expect { update: Vault.Update<ContractState> ->
                                 println("Alice got vault update of $update")
                                 assertEquals((update.produced.first().state.data as Cash.State).amount.quantity, i * 100L)
                             }
