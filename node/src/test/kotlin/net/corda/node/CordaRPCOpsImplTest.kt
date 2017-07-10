@@ -71,8 +71,8 @@ class CordaRPCOpsImplTest {
         aliceNode.database.transaction {
             stateMachineUpdates = rpc.stateMachinesAndUpdates().second
             transactions = rpc.verifiedTransactions().second
-            vaultUpdates = rpc.vaultAndUpdates().second
-            vaultTrackCash = rpc.vaultTrackBy<Cash.State>().future
+            vaultUpdates = rpc.vaultTrackBy<ContractState>().updates
+            vaultTrackCash = rpc.vaultTrackBy<Cash.State>().updates
         }
     }
 
