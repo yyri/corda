@@ -3,6 +3,7 @@ package net.corda.core.serialization.carpenter
 import net.corda.core.serialization.carpenter.test.*
 import net.corda.core.serialization.CordaSerializable
 import net.corda.core.serialization.amqp.*
+import net.corda.core.serialization.test.*
 
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -87,7 +88,7 @@ class CompositeMembers : AmqpCarpenterBase() {
         val testB = 20
         val b = B(A(testA), testB)
         val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(b))
-        val amqpSchema = obj.envelope.schema.mangleNames(listOf (classTestName ("A")))
+        val amqpSchema = obj.envelope.schema.mangleNames(listOf(classTestName("A")))
 
         assert(obj.obj is B)
 
