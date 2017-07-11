@@ -4,7 +4,6 @@ import net.corda.core.contracts.*
 import net.corda.core.crypto.SecureHash
 import net.corda.core.identity.Party
 import net.corda.core.serialization.CordaSerializable
-import java.security.PublicKey
 import java.util.*
 
 /**
@@ -33,10 +32,9 @@ class LedgerTransaction(
         /** The hash of the original serialised WireTransaction. */
         override val id: SecureHash,
         notary: Party?,
-        signers: List<PublicKey>,
         timeWindow: TimeWindow?,
         type: TransactionType
-) : BaseTransaction(inputs, outputs, notary, signers, type, timeWindow) {
+) : BaseTransaction(inputs, outputs, notary, type, timeWindow) {
     //DOCEND 1
     init {
         checkInvariants()

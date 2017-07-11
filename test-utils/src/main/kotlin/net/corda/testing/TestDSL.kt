@@ -1,12 +1,14 @@
 package net.corda.testing
 
 import net.corda.core.contracts.*
-import net.corda.core.crypto.*
+import net.corda.core.crypto.DigitalSignature
+import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.composite.expandedCompositeKeys
+import net.corda.core.crypto.sign
 import net.corda.core.crypto.testing.NullSignature
+import net.corda.core.crypto.toStringShort
 import net.corda.core.identity.Party
 import net.corda.core.node.ServiceHub
-import net.corda.core.serialization.serialize
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.transactions.WireTransaction
@@ -14,6 +16,25 @@ import java.io.InputStream
 import java.security.KeyPair
 import java.security.PublicKey
 import java.util.*
+import kotlin.collections.List
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.contains
+import kotlin.collections.filter
+import kotlin.collections.firstOrNull
+import kotlin.collections.forEach
+import kotlin.collections.intersect
+import kotlin.collections.isNotEmpty
+import kotlin.collections.iterator
+import kotlin.collections.listOf
+import kotlin.collections.map
+import kotlin.collections.mapTo
+import kotlin.collections.mutableListOf
+import kotlin.collections.mutableSetOf
+import kotlin.collections.plus
+import kotlin.collections.plusAssign
+import kotlin.collections.set
+import kotlin.collections.toList
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -329,14 +350,14 @@ data class TestLedgerDSLInterpreter private constructor(
  * @return List of [SignedTransaction]s.
  */
 fun signAll(transactionsToSign: List<WireTransaction>, extraKeys: List<KeyPair>) = transactionsToSign.map { wtx ->
-    check(wtx.mustSign.isNotEmpty())
+    check(wtx.requiredSigningKeys.isNotEmpty())
     val signatures = ArrayList<DigitalSignature.WithKey>()
     val keyLookup = HashMap<PublicKey, KeyPair>()
 
     (ALL_TEST_KEYS + extraKeys).forEach {
         keyLookup[it.public] = it
     }
-    wtx.mustSign.expandedCompositeKeys.forEach {
+    wtx.requiredSigningKeys.expandedCompositeKeys.forEach {
         val key = keyLookup[it] ?: throw IllegalArgumentException("Missing required key for ${it.toStringShort()}")
         signatures += key.sign(wtx.id)
     }

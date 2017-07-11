@@ -36,9 +36,8 @@ class TransactionTests : TestDependencyInjectionBase() {
                 inputs = listOf(StateRef(SecureHash.randomSHA256(), 0)),
                 attachments = emptyList(),
                 outputs = emptyList(),
-                commands = emptyList(),
+                commands = listOf(dummyCommand(compKey, DUMMY_KEY_1.public, DUMMY_KEY_2.public)),
                 notary = DUMMY_NOTARY,
-                signers = listOf(compKey, DUMMY_KEY_1.public, DUMMY_KEY_2.public),
                 type = TransactionType.General,
                 timeWindow = null
         )
@@ -64,9 +63,8 @@ class TransactionTests : TestDependencyInjectionBase() {
                 inputs = listOf(StateRef(SecureHash.randomSHA256(), 0)),
                 attachments = emptyList(),
                 outputs = emptyList(),
-                commands = emptyList(),
+                commands = listOf(dummyCommand(DUMMY_KEY_1.public, DUMMY_KEY_2.public)),
                 notary = DUMMY_NOTARY,
-                signers = listOf(DUMMY_KEY_1.public, DUMMY_KEY_2.public),
                 type = TransactionType.General,
                 timeWindow = null
         )
@@ -99,7 +97,6 @@ class TransactionTests : TestDependencyInjectionBase() {
         val commands = emptyList<AuthenticatedObject<CommandData>>()
         val attachments = emptyList<Attachment>()
         val id = SecureHash.randomSHA256()
-        val signers = listOf(DUMMY_NOTARY_KEY.public)
         val timeWindow: TimeWindow? = null
         val transaction: LedgerTransaction = LedgerTransaction(
                 inputs,
@@ -108,7 +105,6 @@ class TransactionTests : TestDependencyInjectionBase() {
                 attachments,
                 id,
                 null,
-                signers,
                 timeWindow,
                 TransactionType.General
         )
@@ -126,7 +122,6 @@ class TransactionTests : TestDependencyInjectionBase() {
         val commands = emptyList<AuthenticatedObject<CommandData>>()
         val attachments = emptyList<Attachment>()
         val id = SecureHash.randomSHA256()
-        val signers = listOf(DUMMY_NOTARY_KEY.public)
         val timeWindow: TimeWindow? = null
         val transaction: LedgerTransaction = LedgerTransaction(
                 inputs,
@@ -135,7 +130,6 @@ class TransactionTests : TestDependencyInjectionBase() {
                 attachments,
                 id,
                 DUMMY_NOTARY,
-                signers,
                 timeWindow,
                 TransactionType.General
         )
@@ -153,7 +147,6 @@ class TransactionTests : TestDependencyInjectionBase() {
         val commands = emptyList<AuthenticatedObject<CommandData>>()
         val attachments = emptyList<Attachment>()
         val id = SecureHash.randomSHA256()
-        val signers = listOf(DUMMY_NOTARY_KEY.public)
         val timeWindow: TimeWindow? = null
         val transaction: LedgerTransaction = LedgerTransaction(
                 inputs,
@@ -162,7 +155,6 @@ class TransactionTests : TestDependencyInjectionBase() {
                 attachments,
                 id,
                 notary,
-                signers,
                 timeWindow,
                 TransactionType.General
         )
