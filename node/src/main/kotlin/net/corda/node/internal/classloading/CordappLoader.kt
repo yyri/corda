@@ -19,7 +19,6 @@ import net.corda.flows.CashExitFlow
 import net.corda.flows.CashIssueFlow
 import net.corda.flows.CashPaymentFlow
 import net.corda.flows.ContractUpgradeFlow
-import net.corda.node.services.config.NodeConfiguration
 import java.lang.reflect.Modifier
 import java.net.JarURLConnection
 import java.net.URI
@@ -33,7 +32,7 @@ import kotlin.reflect.KClass
  * Handles Cordapp loading and classpath scanning
  */
 class CordappLoader private constructor (val cordappClassPath: List<Path>) {
-    val appClassLoader: AppClassLoader = AppClassLoader(1, cordappClassPath.map { it.toUri().toURL() }.toTypedArray())
+    val appClassLoader: CordappClassLoader = CordappClassLoader(1, cordappClassPath.map { it.toUri().toURL() }.toTypedArray())
     val scanResult = scanCordapps()
 
     companion object {
