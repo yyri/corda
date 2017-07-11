@@ -266,7 +266,7 @@ abstract class AbstractNode(open val configuration: NodeConfiguration,
             installCoreFlows()
 
             installCordaServices()
-            registerInitiatedFlows()
+            registerCordappFlows()
             rpcFlows = cordappLoader.findRPCFlows()
 
             // TODO: Investigate having class path scanning find this flow
@@ -331,11 +331,11 @@ abstract class AbstractNode(open val configuration: NodeConfiguration,
         installCoreFlow(NotaryFlow.Client::class, { party: Party, version: Int -> service.createServiceFlow(party, version) })
     }
 
-    private fun registerInitiatedFlows() {
+    private fun registerCordappFlows() {
         cordappLoader.findInitiatedFlows()
                 .forEach {
                     try {
-                        println("384: ${it.classLoader}")
+                        require(it.classLoader == cordappLoader.appClassLoader)
                         registerInitiatedFlowInternal(it, track = false)
                     } catch (e: NoSuchMethodException) {
                         log.error("${it.name}, as an initiated flow, must have a constructor with a single parameter " +
@@ -357,9 +357,6 @@ abstract class AbstractNode(open val configuration: NodeConfiguration,
 
     private fun <F : FlowLogic<*>> registerInitiatedFlowInternal(initiatedFlow: Class<F>, track: Boolean): Observable<F> {
         val ctor = initiatedFlow.getDeclaredConstructor(Party::class.java).apply { isAccessible = true }
-        println("CTOR CLASSLOADER: ${initiatedFlow.classLoader}")
-        println("CLASSLOADER: ${cordappLoader.appClassLoader}")
-        assert(initiatedFlow.classLoader == cordappLoader.appClassLoader)
         val initiatingFlow = initiatedFlow.requireAnnotation<InitiatedBy>().value.java
         val (version, classWithAnnotation) = initiatingFlow.flowVersionAndInitiatingClass
         require(classWithAnnotation == initiatingFlow) {
