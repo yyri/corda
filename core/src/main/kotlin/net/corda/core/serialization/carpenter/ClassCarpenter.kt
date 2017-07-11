@@ -7,11 +7,9 @@ import org.objectweb.asm.Opcodes.*
 import java.lang.Character.isJavaIdentifierPart
 import java.lang.Character.isJavaIdentifierStart
 
-import net.corda.core.serialization.carpenter.Schema
-import net.corda.core.serialization.carpenter.ClassSchema
-import net.corda.core.serialization.carpenter.InterfaceSchema
-
 import java.util.*
+
+/**********************************************************************************************************************/
 
 /**
  * Any object that implements this interface is expected to expose its own fields via the [get] method, exactly
@@ -70,15 +68,6 @@ class CarpenterClassLoader : ClassLoader(Thread.currentThread().contextClassLoad
  *
  * Equals/hashCode methods are not yet supported.
  */
-
-/**********************************************************************************************************************/
-
-class CarpenterClassLoader : ClassLoader(Thread.currentThread().contextClassLoader) {
-    fun load(name: String, bytes: ByteArray) = defineClass(name, bytes, 0, bytes.size)
-}
-
-/**********************************************************************************************************************/
-
 class ClassCarpenter {
     // TODO: Generics.
     // TODO: Sandbox the generated code when a security manager is in use.
