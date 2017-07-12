@@ -3,16 +3,22 @@ package net.corda.traderdemo.flow
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.contracts.CommercialPaper
 import net.corda.core.contracts.Amount
+import net.corda.core.contracts.FungibleAsset
 import net.corda.core.contracts.TransactionGraphSearch
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.InitiatedBy
 import net.corda.core.identity.Party
-import net.corda.core.node.NodeInfo
-import net.corda.core.transactions.SignedTransaction
 import net.corda.core.internal.Emoji
+import net.corda.core.node.NodeInfo
+import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.node.services.vault.Sort
+import net.corda.core.node.services.vault.builder
+import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
 import net.corda.flows.TwoPartyTradeFlow
+import net.corda.schemas.CashSchemaV1
 import java.util.*
 
 @InitiatedBy(SellerFlow::class)
@@ -46,7 +52,18 @@ class BuyerFlow(val otherParty: Party) : FlowLogic<Unit>() {
     }
 
     private fun logBalance() {
-        val balances = serviceHub.vaultService.cashBalances.entries.map { "${it.key.currencyCode} ${it.value}" }
+        val sum = builder {
+            CashSchemaV1.PersistentCashState::pennies.sum(groupByColumns = listOf(CashSchemaV1.PersistentCashState::issuerParty,
+                    CashSchemaV1.PersistentCashState::currency),
+                    orderBy = Sort.Direction.DESC)
+        }
+
+        val sums = serviceHub.vaultQueryService.queryBy<FungibleAsset<*>>(QueryCriteria.VaultCustomQueryCriteria(sum)).otherResults
+        val balances = mutableListOf<Amount<Currency>>()
+        for (index in 0..sums.size - 1 step 2) {
+            balances += Amount(sums[index] as Long, sums[index + 1] as Currency)
+        }
+
         println("Remaining balance: ${balances.joinToString()}")
     }
 

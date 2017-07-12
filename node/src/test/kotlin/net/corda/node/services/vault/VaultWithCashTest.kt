@@ -4,16 +4,21 @@ import net.corda.contracts.asset.Cash
 import net.corda.contracts.asset.DUMMY_CASH_ISSUER
 import net.corda.core.contracts.*
 import net.corda.core.identity.AnonymousParty
-import net.corda.core.node.services.VaultService
-import net.corda.core.node.services.consumedStates
-import net.corda.core.node.services.unconsumedStates
+import net.corda.core.node.services.*
+import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.node.services.vault.builder
 import net.corda.core.transactions.SignedTransaction
+import net.corda.node.services.database.HibernateConfiguration
+import net.corda.node.services.schema.NodeSchemaService
 import net.corda.node.utilities.CordaPersistence
 import net.corda.node.utilities.configureDatabase
+import net.corda.schemas.CashSchemaV1
+import net.corda.schemas.CommercialPaperSchemaV1
 import net.corda.testing.*
 import net.corda.testing.contracts.*
 import net.corda.testing.node.MockServices
 import net.corda.testing.node.makeTestDataSourceProperties
+import net.corda.testing.schemas.DummyLinearStateSchemaV1
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.After
@@ -23,7 +28,6 @@ import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 // TODO: Move this to the cash contract tests once mock services are further split up.
 
@@ -39,8 +43,10 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
         val dataSourceProps = makeTestDataSourceProperties()
         database = configureDatabase(dataSourceProps)
         database.transaction {
+            val customSchemas = setOf(CommercialPaperSchemaV1, DummyLinearStateSchemaV1)
+            val hibernateConfig = HibernateConfiguration(NodeSchemaService(customSchemas))
             services = object : MockServices() {
-                override val vaultService: VaultService = makeVaultService(dataSourceProps)
+                override val vaultService: VaultService = makeVaultService(dataSourceProps, hibernateConfig)
 
                 override fun recordTransactions(txs: Iterable<SignedTransaction>) {
                     for (stx in txs) {
@@ -49,6 +55,8 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
                     // Refactored to use notifyAll() as we have no other unit test for that method with multiple transactions.
                     vaultService.notifyAll(txs.map { it.tx })
                 }
+
+                override val vaultQueryService: VaultQueryService = HibernateVaultQueryImpl(hibernateConfig, vaultService.updatesPublisher)
             }
         }
     }
@@ -58,6 +66,26 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
         LogHelper.reset(VaultWithCashTest::class)
         database.close()
     }
+
+    private fun getBalance(currency: Currency): Amount<Currency> {
+        val sum = builder { CashSchemaV1.PersistentCashState::pennies.sum(groupByColumns = listOf(CashSchemaV1.PersistentCashState::currency)) }
+        val sumCriteria = QueryCriteria.VaultCustomQueryCriteria(sum)
+
+        val ccyIndex = builder { CashSchemaV1.PersistentCashState::currency.equal(currency.currencyCode) }
+        val ccyCriteria = QueryCriteria.VaultCustomQueryCriteria(ccyIndex)
+
+        val results = services.vaultQueryService.queryBy<FungibleAsset<*>>(sumCriteria.and(ccyCriteria))
+        if (results.otherResults.isEmpty()) {
+            return Amount(0L, currency)
+        } else {
+            assertThat(results.otherResults).hasSize(2)
+            assertThat(results.otherResults[1]).isEqualTo(currency.currencyCode)
+            @Suppress("UNCHECKED_CAST")
+            val quantity = results.otherResults[0] as Long
+            return Amount(quantity, currency)
+        }
+    }
+
 
     @Test
     fun splits() {
@@ -88,7 +116,7 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
             Cash().generateIssue(usefulBuilder, 100.DOLLARS `issued by` MEGA_CORP.ref(1), AnonymousParty(freshKey), DUMMY_NOTARY)
             val usefulTX = megaCorpServices.signInitialTransaction(usefulBuilder)
 
-            assertNull(vault.cashBalances[USD])
+            assertEquals(0.DOLLARS, getBalance(USD))
             services.recordTransactions(usefulTX)
 
             // A tx that spends our money.
@@ -97,7 +125,7 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
             val spendPTX = services.signInitialTransaction(spendTXBuilder, freshKey)
             val spendTX = notaryServices.addSignature(spendPTX)
 
-            assertEquals(100.DOLLARS, vault.cashBalances[USD])
+            assertEquals(100.DOLLARS, getBalance(USD))
 
             // A tx that doesn't send us anything.
             val irrelevantBuilder = TransactionType.General.Builder(DUMMY_NOTARY)
@@ -107,10 +135,10 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
             val irrelevantTX = notaryServices.addSignature(irrelevantPTX)
 
             services.recordTransactions(irrelevantTX)
-            assertEquals(100.DOLLARS, vault.cashBalances[USD])
+            assertEquals(100.DOLLARS, getBalance(USD))
             services.recordTransactions(spendTX)
 
-            assertEquals(20.DOLLARS, vault.cashBalances[USD])
+            assertEquals(20.DOLLARS, getBalance(USD))
 
             // TODO: Flesh out these tests as needed.
         }
@@ -126,7 +154,7 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
                     issuedBy = MEGA_CORP.ref(1),
                     issuerKey = MEGA_CORP_KEY,
                     ownedBy = AnonymousParty(freshKey))
-            println("Cash balance: ${vault.cashBalances[USD]}")
+            println("Cash balance: ${getBalance(USD)}")
 
             assertThat(vault.unconsumedStates<Cash.State>()).hasSize(10)
             assertThat(vault.softLockedStates<Cash.State>()).hasSize(0)
@@ -149,7 +177,7 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
                                 LOCKED: ${vault.softLockedStates<Cash.State>().count()} : ${vault.softLockedStates<Cash.State>()}
                     """)
                     services.recordTransactions(txn1)
-                    println("txn1: Cash balance: ${vault.cashBalances[USD]}")
+                    println("txn1: Cash balance: ${getBalance(USD)}")
                     println("""txn1 states:
                                 UNCONSUMED: ${vault.unconsumedStates<Cash.State>().count()} : ${vault.unconsumedStates<Cash.State>()},
                                 CONSUMED: ${vault.consumedStates<Cash.State>().count()} : ${vault.consumedStates<Cash.State>()},
@@ -179,7 +207,7 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
                                 LOCKED: ${vault.softLockedStates<Cash.State>().count()} : ${vault.softLockedStates<Cash.State>()}
                     """)
                     services.recordTransactions(txn2)
-                    println("txn2: Cash balance: ${vault.cashBalances[USD]}")
+                    println("txn2: Cash balance: ${getBalance(USD)}")
                     println("""txn2 states:
                                 UNCONSUMED: ${vault.unconsumedStates<Cash.State>().count()} : ${vault.unconsumedStates<Cash.State>()},
                                 CONSUMED: ${vault.consumedStates<Cash.State>().count()} : ${vault.consumedStates<Cash.State>()},
@@ -197,8 +225,8 @@ class VaultWithCashTest : TestDependencyInjectionBase() {
 
         countDown.await()
         database.transaction {
-            println("Cash balance: ${vault.cashBalances[USD]}")
-            assertThat(vault.cashBalances[USD]).isIn(DOLLARS(20), DOLLARS(40))
+            println("Cash balance: ${getBalance(USD)}")
+            assertThat(getBalance(USD)).isIn(DOLLARS(20), DOLLARS(40))
         }
     }
 

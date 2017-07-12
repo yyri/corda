@@ -4,20 +4,20 @@ import com.google.common.util.concurrent.Futures
 import net.corda.client.rpc.notUsed
 import net.corda.contracts.CommercialPaper
 import net.corda.contracts.asset.Cash
-import net.corda.testing.contracts.calculateRandomlySizedAmounts
-import net.corda.core.contracts.Amount
-import net.corda.core.contracts.DOLLARS
-import net.corda.core.contracts.USD
-import net.corda.core.contracts.filterStatesOfType
+import net.corda.core.contracts.*
 import net.corda.core.getOrThrow
+import net.corda.core.internal.Emoji
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.startFlow
+import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.node.services.vault.builder
 import net.corda.core.utilities.OpaqueBytes
-import net.corda.core.internal.Emoji
 import net.corda.core.utilities.loggerFor
 import net.corda.flows.IssuerFlow.IssuanceRequester
+import net.corda.schemas.CashSchemaV1
 import net.corda.testing.BOC
 import net.corda.testing.DUMMY_NOTARY
+import net.corda.testing.contracts.calculateRandomlySizedAmounts
 import net.corda.traderdemo.flow.SellerFlow
 import org.bouncycastle.asn1.x500.X500Name
 import java.util.*
@@ -36,7 +36,26 @@ class TraderDemoClientApi(val rpc: CordaRPCOps) {
         return vault.filterStatesOfType<Cash.State>().size
     }
 
-    val dollarCashBalance: Amount<Currency> get() = rpc.getCashBalances()[USD]!!
+
+    private fun getBalance(currency: Currency): Amount<Currency> {
+        val sum = builder { CashSchemaV1.PersistentCashState::pennies.sum(groupByColumns = listOf(CashSchemaV1.PersistentCashState::currency)) }
+        val sumCriteria = QueryCriteria.VaultCustomQueryCriteria(sum)
+
+        val ccyIndex = builder { CashSchemaV1.PersistentCashState::currency.equal(currency.currencyCode) }
+        val ccyCriteria = QueryCriteria.VaultCustomQueryCriteria(ccyIndex)
+
+        val results = rpc.vaultQueryByCriteria(sumCriteria.and(ccyCriteria), FungibleAsset::class.java)
+        if (results.otherResults.isEmpty()) {
+            return Amount(0L, currency)
+        } else {
+            @Suppress("UNCHECKED_CAST")
+            val quantity = results.otherResults[0] as Long
+            return Amount(quantity, currency)
+        }
+    }
+
+
+    val dollarCashBalance: Amount<Currency> get() = getBalance(USD)
 
     val commercialPaperCount: Int get() {
         val (vault, vaultUpdates) = rpc.vaultAndUpdates()

@@ -3,27 +3,29 @@ package net.corda.demobench.views
 import com.jediterm.terminal.TerminalColor
 import com.jediterm.terminal.TextStyle
 import com.jediterm.terminal.ui.settings.DefaultSettingsProvider
-import java.awt.Dimension
-import java.net.URI
-import java.util.logging.Level
-import javax.swing.SwingUtilities
 import javafx.application.Platform
 import javafx.embed.swing.SwingNode
 import javafx.scene.control.Button
 import javafx.scene.control.Label
 import javafx.scene.control.ProgressIndicator
 import javafx.scene.image.ImageView
-import javafx.scene.layout.StackPane
 import javafx.scene.layout.HBox
+import javafx.scene.layout.StackPane
 import javafx.scene.layout.VBox
 import javafx.util.Duration
+import net.corda.core.contracts.Amount
 import net.corda.core.contracts.ContractState
+import net.corda.core.contracts.FungibleAsset
 import net.corda.core.crypto.commonName
 import net.corda.core.match
-import net.corda.core.then
 import net.corda.core.messaging.CordaRPCOps
+import net.corda.core.messaging.vaultQueryBy
 import net.corda.core.messaging.vaultTrackBy
 import net.corda.core.node.services.vault.PageSpecification
+import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.node.services.vault.Sort
+import net.corda.core.node.services.vault.builder
+import net.corda.core.then
 import net.corda.demobench.explorer.ExplorerController
 import net.corda.demobench.model.NodeConfig
 import net.corda.demobench.model.NodeController
@@ -33,9 +35,15 @@ import net.corda.demobench.rpc.NodeRPC
 import net.corda.demobench.ui.PropertyLabel
 import net.corda.demobench.web.DBViewer
 import net.corda.demobench.web.WebServerController
+import net.corda.schemas.CashSchemaV1
 import rx.Subscription
 import rx.schedulers.Schedulers
 import tornadofx.*
+import java.awt.Dimension
+import java.net.URI
+import java.util.*
+import java.util.logging.Level
+import javax.swing.SwingUtilities
 
 class NodeTerminalView : Fragment() {
     override val root by fxml<VBox>()
@@ -222,9 +230,20 @@ class NodeTerminalView : Fragment() {
 
     private fun pollCashBalances(ops: CordaRPCOps) {
         try {
-            val cashBalances = ops.getCashBalances().entries.joinToString(
+            val sum = builder {
+                CashSchemaV1.PersistentCashState::pennies.sum(groupByColumns = listOf(CashSchemaV1.PersistentCashState::issuerParty,
+                        CashSchemaV1.PersistentCashState::currency),
+                        orderBy = Sort.Direction.DESC)
+            }
+
+            val sums = ops.vaultQueryBy<FungibleAsset<*>>(QueryCriteria.VaultCustomQueryCriteria(sum)).otherResults
+            val balances = mutableListOf<Amount<Currency>>()
+            for (index in 0..sums.size - 1 step 2) {
+                balances += Amount(sums[index] as Long, sums[index + 1] as Currency)
+            }
+            val cashBalances = balances.joinToString(
                     separator = ", ",
-                    transform = { e -> e.value.toString() }
+                    transform = { e -> e.toString() }
             )
 
             Platform.runLater {

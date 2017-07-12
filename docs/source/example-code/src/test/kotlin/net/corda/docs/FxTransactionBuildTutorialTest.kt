@@ -1,15 +1,18 @@
 package net.corda.docs
 
+import net.corda.contracts.asset.Cash
 import net.corda.core.contracts.*
 import net.corda.core.getOrThrow
 import net.corda.core.node.services.ServiceInfo
-import net.corda.core.utilities.OpaqueBytes
+import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.toFuture
-import net.corda.testing.DUMMY_NOTARY
-import net.corda.testing.DUMMY_NOTARY_KEY
+import net.corda.core.utilities.OpaqueBytes
 import net.corda.flows.CashIssueFlow
 import net.corda.node.services.network.NetworkMapService
 import net.corda.node.services.transactions.ValidatingNotaryService
+import net.corda.testing.DUMMY_NOTARY
+import net.corda.testing.DUMMY_NOTARY_KEY
 import net.corda.testing.node.MockNetwork
 import org.junit.After
 import org.junit.Before
@@ -78,28 +81,28 @@ class FxTransactionBuildTutorialTest {
         // Get the balances when the vault updates
         nodeAVaultUpdate.get()
         val balancesA = nodeA.database.transaction {
-            nodeA.services.vaultService.cashBalances
+            nodeA.services.vaultQueryService.queryBy<Cash.State>(QueryCriteria.FungibleAssetQueryCriteria()).states
         }
         nodeBVaultUpdate.get()
         val balancesB = nodeB.database.transaction {
-            nodeB.services.vaultService.cashBalances
+            nodeB.services.vaultQueryService.queryBy<Cash.State>(QueryCriteria.FungibleAssetQueryCriteria()).states
         }
         println("BalanceA\n" + balancesA)
         println("BalanceB\n" + balancesB)
         // Verify the transfers occurred as expected
-        assertEquals(POUNDS(100), balancesA[GBP])
-        assertEquals(DOLLARS(1000 - 200), balancesA[USD])
-        assertEquals(POUNDS(1000 - 100), balancesB[GBP])
-        assertEquals(DOLLARS(200), balancesB[USD])
+        assertEquals(POUNDS(100), balancesA.single { it.state.data.amount.token.product == GBP }.state.data.amount.withoutIssuer())
+        assertEquals(DOLLARS(1000 - 200), balancesA.single { it.state.data.amount.token.product == USD }.state.data.amount.withoutIssuer())
+        assertEquals(POUNDS(1000 - 100), balancesB.single { it.state.data.amount.token.product == GBP }.state.data.amount.withoutIssuer())
+        assertEquals(DOLLARS(200), balancesB.single { it.state.data.amount.token.product == USD }.state.data.amount.withoutIssuer())
     }
 
     private fun printBalances() {
         // Print out the balances
         nodeA.database.transaction {
-            println("BalanceA\n" + nodeA.services.vaultService.cashBalances)
+            println("BalanceA\n" + nodeA.services.vaultQueryService.queryBy<Cash.State>(QueryCriteria.FungibleAssetQueryCriteria()).states)
         }
         nodeB.database.transaction {
-            println("BalanceB\n" + nodeB.services.vaultService.cashBalances)
+            println("BalanceB\n" + nodeB.services.vaultQueryService.queryBy<Cash.State>(QueryCriteria.FungibleAssetQueryCriteria()).states)
         }
     }
 }
