@@ -15,11 +15,8 @@ import java.lang.reflect.Type
 import java.lang.reflect.TypeVariable
 import java.util.*
 
-import net.corda.core.serialization.carpenter.CarpenterSchemas
 import net.corda.core.serialization.carpenter.Schema as CarpenterSchema
 import net.corda.core.serialization.carpenter.Field as CarpenterField
-import net.corda.core.serialization.carpenter.CarpenterSchemaFactory
-import net.corda.core.serialization.carpenter.FieldFactory
 
 // TODO: get an assigned number as per AMQP spec
 val DESCRIPTOR_TOP_32BITS: Long = 0xc0da0000
@@ -28,24 +25,6 @@ val DESCRIPTOR_DOMAIN: String = "net.corda"
 
 // "corda" + majorVersionByte + minorVersionMSB + minorVersionLSB
 val AmqpHeaderV1_0: OpaqueBytes = OpaqueBytes("corda\u0001\u0000\u0000".toByteArray())
-
-private fun List<ClassLoader>.exists (clazz: String) =
-        this.find { try { it.loadClass(clazz); true } catch (e: ClassNotFoundException) { false } } != null
-
-private fun List<ClassLoader>.loadIfExists (clazz: String) : Class<*> {
-    this.forEach {
-        try {
-            return it.loadClass(clazz)
-        } catch (e: ClassNotFoundException) {
-            return@forEach
-        }
-    }
-    throw ClassNotFoundException(clazz)
-}
-
-class UncarpentableException (name: String, field: String, type: String) :
-        Throwable ("Class $name is loadable yet contains field $field of unknown type $type")
-
 
 /**
  * This class wraps all serialized data, so that the schema can be carried along with it.  We will provide various internal utilities
@@ -111,18 +90,6 @@ data class Schema(val types: List<TypeNotation>) : DescribedType {
     override fun getDescribed(): Any = listOf(types)
 
     override fun toString(): String = types.joinToString("\n")
-
-    fun carpenterSchema(loaders : List<ClassLoader> = listOf<ClassLoader>(ClassLoader.getSystemClassLoader()))
-            : CarpenterSchemas
-    {
-        val rtn = CarpenterSchemas.newInstance()
-
-        types.filterIsInstance<CompositeType>().forEach {
-            it.carpenterSchema(classLoaders = loaders, carpenterSchemas = rtn)
-        }
-
-        return rtn
-    }
 }
 
 data class Descriptor(var name: String?, val code: UnsignedLong? = null) : DescribedType {

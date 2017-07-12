@@ -134,11 +134,6 @@ class SingleMemberCompositeSchemaToClassCarpenterTests : AmqpCarpenterBase() {
 
     @Test
     fun singleDouble() {
-<<<<<<< HEAD
-=======
-        val test = 10.0
-
->>>>>>> Update to account for nullability awareness in the carpenter
         @CordaSerializable
         data class A(val a: Double)
 

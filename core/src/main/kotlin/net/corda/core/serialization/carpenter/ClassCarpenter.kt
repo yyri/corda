@@ -9,8 +9,6 @@ import java.lang.Character.isJavaIdentifierStart
 
 import java.util.*
 
-/**********************************************************************************************************************/
-
 /**
  * Any object that implements this interface is expected to expose its own fields via the [get] method, exactly
  * as if `this.class.getMethod("get" + name.capitalize()).invoke(this)` had been called. It is intended as a more
