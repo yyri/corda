@@ -2,11 +2,18 @@ package net.corda.core.serialization.amqp
 
 import org.junit.Test
 import kotlin.test.*
+import net.corda.core.serialization.test.mangleName
+import org.apache.qpid.proton.codec.Data
+
+class TestSerializationOutput(val strings : List<String>) : SerializationOutput() {
+    override fun putObject(schema: Schema, data: Data) {
+        super.putObject(schema.mangleName(strings), data)
+    }
+}
 
 class DeserialiseNeedingCarpentryTests {
-
-//    fun testName() = Thread.currentThread().stackTrace[2].methodName
-//    inline fun classTestName(clazz: String) = "${this.javaClass.name}\$${testName()}\$$clazz"
+    fun testName() = Thread.currentThread().stackTrace[2].methodName
+    inline fun classTestName(clazz: String) = "${this.javaClass.name}\$${testName()}\$$clazz"
 
     @Test
     fun oneType() {
@@ -14,10 +21,10 @@ class DeserialiseNeedingCarpentryTests {
 
         val a = A(10, "20")
 
-        var factory = SerializerFactory()
-        fun serialise(clazz: Any) = SerializationOutput(factory).serialize(clazz)
-
+        fun serialise(clazz: Any) = TestSerializationOutput(listOf(classTestName("A"))).serialize(clazz)
         val serA = serialise(a)
+        val deserA = DeserializationInput().deserialize(serA)
+
 
 //        serA.e
 
