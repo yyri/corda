@@ -6,7 +6,6 @@ import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.messaging.DataFeed
 import net.corda.core.node.NodeInfo
-import net.corda.core.node.ServiceHub
 import net.corda.core.randomOrNull
 import net.corda.core.serialization.CordaSerializable
 import org.bouncycastle.asn1.x500.X500Name
@@ -118,6 +117,20 @@ interface NetworkMapCache {
             notaryNodes.filter { it.advertisedServices.any { it.info.type == type } }
         }
         return nodes.randomOrNull()?.notaryIdentity
+    }
+
+    /**
+     * Returns a service identity advertised by one of the nodes on the network
+     * @param type Specifies the type of the service
+     */
+    fun getServiceOf(type: ServiceType): Party? {
+        for (node in partyNodes) {
+            val serviceIdentities = node.serviceIdentities(type)
+            if (serviceIdentities.isNotEmpty()) {
+                return serviceIdentities.randomOrNull()
+            }
+        }
+        return null;
     }
 
     /** Checks whether a given party is an advertised notary identity */
