@@ -89,7 +89,7 @@ data class Schema(val types: List<TypeNotation>) : DescribedType {
     override fun toString(): String = types.joinToString("\n")
 }
 
-data class Descriptor(var name: String?, val code: UnsignedLong? = null) : DescribedType {
+data class Descriptor(val name: String?, val code: UnsignedLong? = null) : DescribedType {
     companion object : DescribedTypeConstructor<Descriptor> {
         val DESCRIPTOR = UnsignedLong(3L or DESCRIPTOR_TOP_32BITS)
 
@@ -127,7 +127,7 @@ data class Descriptor(var name: String?, val code: UnsignedLong? = null) : Descr
     }
 }
 
-data class Field(var name: String, val type: String, val requires: List<String>, val default: String?, val label: String?, val mandatory: Boolean, val multiple: Boolean) : DescribedType {
+data class Field(val name: String, val type: String, val requires: List<String>, val default: String?, val label: String?, val mandatory: Boolean, val multiple: Boolean) : DescribedType {
     companion object : DescribedTypeConstructor<Field> {
         val DESCRIPTOR = UnsignedLong(4L or DESCRIPTOR_TOP_32BITS)
 
@@ -190,7 +190,7 @@ sealed class TypeNotation : DescribedType {
     abstract val descriptor: Descriptor
 }
 
-data class CompositeType(override var name: String, override val label: String?, override val provides: List<String>, override val descriptor: Descriptor, val fields: List<Field>) : TypeNotation() {
+data class CompositeType(override val name: String, override val label: String?, override val provides: List<String>, override val descriptor: Descriptor, val fields: List<Field>) : TypeNotation() {
     companion object : DescribedTypeConstructor<CompositeType> {
         val DESCRIPTOR = UnsignedLong(5L or DESCRIPTOR_TOP_32BITS)
 

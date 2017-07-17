@@ -95,7 +95,7 @@ class InheritanceSchemaToClassCarpenterTests : AmqpCarpenterBase() {
 
         assertEquals(0, l1.size)
 
-        val mangleSchema = serSchema.mangleNames(listOf(classTestName("A")))
+        val mangledSchema = serSchema.mangleNames(listOf(classTestName("A")))
         val aName = mangleName(classTestName("A"))
         val l2 = mangledSchema.carpenterSchema()
 

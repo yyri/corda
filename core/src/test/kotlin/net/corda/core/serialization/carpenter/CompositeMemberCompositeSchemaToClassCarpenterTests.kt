@@ -196,7 +196,6 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.obj is C)
 
         val amqpSchema = obj.envelope.schema.mangleNames(listOf(classTestName("A"), classTestName("B")))
-        val obj = DeserializationInput(factory).deserializeAndReturnEnvelope(serialise(c))
 
         amqpSchema.carpenterSchema()
     }

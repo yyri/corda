@@ -5,15 +5,11 @@ import net.corda.core.serialization.amqp.Field
 import net.corda.core.serialization.amqp.Schema
 import net.corda.core.serialization.amqp.TypeNotation
 
-/**********************************************************************************************************************/
-
 fun mangleName(name: String) = "${name}__carpenter"
-
-/**********************************************************************************************************************/
 
 /* given a list of class names work through the amqp envelope schema and alter any that
    match in the fashion defined above */
-fun Schema.mangleName(names: List<String>): Schema {
+fun Schema.mangleNames(names: List<String>): Schema {
     val newTypes: MutableList<TypeNotation> = mutableListOf()
 
     for (type in types) {
@@ -40,5 +36,3 @@ fun Schema.mangleName(names: List<String>): Schema {
 
     return Schema(types = newTypes)
 }
-
-/**********************************************************************************************************************/
