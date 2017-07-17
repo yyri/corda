@@ -34,6 +34,13 @@ class CordaPersistence(var dataSource: HikariDataSource): Closeable {
         return DatabaseTransactionManager.currentOrNew(Connection.TRANSACTION_REPEATABLE_READ)
     }
 
+    fun createSession(): Connection {
+        // We need to set the database for the current [Thread] or [Fiber] here as some tests share threads across databases.
+        DatabaseTransactionManager.dataSource = this
+        val ctx = DatabaseTransactionManager.currentOrNull()
+        return ctx?.connection ?: throw IllegalStateException("Was expecting to find database transaction: must wrap calling code within a transaction.")
+    }
+
     fun <T> isolatedTransaction(block: DatabaseTransaction.() -> T): T {
         val context = DatabaseTransactionManager.setThreadLocalTx(null)
         return try {
