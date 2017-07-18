@@ -326,7 +326,7 @@ class NodeVaultService(private val services: ServiceHub, dataSourceProperties: P
                 result.get().forEach {
                     val txHash = SecureHash.parse(it.txId)
                     val index = it.index
-                    val state = it.contractState.deserialize<TransactionState<ContractState>>(storageKryo())
+                    val state = it.contractState.deserialize<TransactionState<ContractState>>(context = STORAGE_CONTEXT)
                     states.add(StateAndRef(state, StateRef(txHash, index)))
                 }
             }
