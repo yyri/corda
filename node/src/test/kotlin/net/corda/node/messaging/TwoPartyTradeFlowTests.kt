@@ -5,10 +5,8 @@ import net.corda.contracts.CommercialPaper
 import net.corda.contracts.asset.*
 import net.corda.core.*
 import net.corda.core.contracts.*
-import net.corda.core.crypto.DigitalSignature
 import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.sign
-import net.corda.core.crypto.toStringShort
 import net.corda.core.crypto.*
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.InitiatedBy
