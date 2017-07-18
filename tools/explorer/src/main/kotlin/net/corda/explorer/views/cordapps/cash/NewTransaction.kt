@@ -193,7 +193,7 @@ class NewTransaction : Fragment() {
         // Issuer
         issuerLabel.visibleProperty().bind(transactionTypeCB.valueProperty().isNotNull)
         issuerChoiceBox.apply {
-            items = issuers.map { it.legalIdentity as Party }.unique().sorted()
+            items = issuers.map { it.legalIdentity }.unique().sorted()
             converter = stringConverter { PartyNameFormatter.short.format(it.name) }
             visibleProperty().bind(transactionTypeCB.valueProperty().map { it == CashTransaction.Pay })
         }
@@ -220,7 +220,7 @@ class NewTransaction : Fragment() {
         )
         availableAmount.textProperty()
                 .bind(Bindings.createStringBinding({
-                    val filteredCash = cash.filtered { it.token.issuer.party as AbstractParty == issuer.value && it.token.product == currencyChoiceBox.value }
+                    val filteredCash = cash.filtered { it.token.issuer.party == issuer.value && it.token.product == currencyChoiceBox.value }
                             .map { it.withoutIssuer() }.sumOrNull()
                     "${filteredCash ?: "None"} Available"
                 }, arrayOf(currencyChoiceBox.valueProperty(), issuerChoiceBox.valueProperty())))
