@@ -146,5 +146,4 @@ class NullableField(field: Class<out Any?>) : Field(field) {
 object FieldFactory {
     fun newInstance (mandatory: Boolean, name: String, field: Class<out Any?>) =
             if (mandatory) NonNullableField (name, field) else NullableField (name, field)
-
 }

@@ -76,6 +76,12 @@ class ObjectSerializer(val clazz: Type, factory: SerializerFactory) : AMQPSerial
         if (javaConstructor == null) {
             throw NotSerializableException("Attempt to deserialize an interface: $clazz. Serialized form is invalid.")
         }
+        println ("\nConstruct!:")
+        javaConstructor.typeParameters.forEach { println (it) }
+        println ("param count ${javaConstructor.parameterCount}")
+        javaConstructor.parameters.forEach { println ("  ${it.name} ${it.type}") }
+        properties.forEach { println (it!!::class.java) }
+        println (properties)
         return javaConstructor.newInstance(*properties.toTypedArray())
     }
 }

@@ -32,6 +32,13 @@ internal fun constructorForDeserialization(type: Type): KFunction<Any>? {
     if (isConcrete(clazz)) {
         var preferredCandidate: KFunction<Any>? = clazz.kotlin.primaryConstructor
         var annotatedCount = 0
+
+        println ("Const for des")
+        clazz.constructors[0].parameters.forEach { println ("${it.name} ${it.type}") }
+        clazz.constructors[0].parameterTypes.forEach { println ("${it.name} ${it.typeName}") }
+
+        clazz.kotlin.constructors.toTypedArray()[0].parameters.forEach { println ("** ${it.name} ${it.type} ${it.type.javaType}")}
+
         val kotlinConstructors = clazz.kotlin.constructors
         val hasDefault = kotlinConstructors.any { it.parameters.isEmpty() }
         for (kotlinConstructor in kotlinConstructors) {

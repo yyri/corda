@@ -44,10 +44,15 @@ sealed class PropertySerializer(val name: String, val readMethod: Method, val re
     }
 
     private fun generateMandatory(): Boolean {
-        return isJVMPrimitive || !readMethod.returnsNullable()
+        val res = isJVMPrimitive || !readMethod.returnsNullable()
+        return res
     }
 
     private fun Method.returnsNullable(): Boolean {
+        if (this.annotations.find { it.annotationClass.java == javax.annotation.Nonnull::class.java } != null) {
+            return false
+        }
+
         val returnTypeString = this.declaringClass.kotlin.memberProperties.firstOrNull { it.javaGetter == this }?.returnType?.toString() ?: "?"
         return returnTypeString.endsWith('?') || returnTypeString.endsWith('!')
     }

@@ -4,6 +4,7 @@ import org.junit.Test
 import kotlin.test.*
 import net.corda.core.serialization.carpenter.*
 import java.lang.Character
+import org.apache.qpid.proton.codec.Data
 
 interface I {
     fun getName() : String
@@ -16,6 +17,16 @@ interface I {
  * replicates the situation where a reciever doesn't have some or all elements of a schema present on it's classpath
  */
 class DeserializeNeedingCarpentryTests {
+    /**
+     * Simple test serialiser  for inspecting the schema after serialisation
+     */
+    class TestSerializationOutput : SerializationOutput() {
+        override fun writeSchema(schema: Schema, data: Data) {
+            println (schema)
+            super.writeSchema(schema, data)
+        }
+    }
+
     @Test
     fun verySimpleType() {
         val testVal = 10
@@ -125,6 +136,76 @@ class DeserializeNeedingCarpentryTests {
     }
 
     @Test
+    fun nullableInt() {
+        val cc = ClassCarpenter()
+
+        val clazz = cc.build (ClassSchema("clazz",
+                mapOf("a" to NullableField (Integer::class.java))))
+
+        val serialisedBytes = TestSerializationOutput().serialize(
+                clazz.constructors.first().newInstance(1))
+
+        // this shouldn't blow up
+        DeserializationInput().deserialize(serialisedBytes)
+    }
+
+    @Test
+    fun nullableStr() {
+        val cc = ClassCarpenter()
+
+        val clazz = cc.build (ClassSchema("clazz",
+                mapOf("a" to NullableField (String::class.java))))
+
+        val serialisedBytes = TestSerializationOutput().serialize(
+                clazz.constructors.first().newInstance("this is a string"))
+
+        // this should not blow up
+        DeserializationInput().deserialize(serialisedBytes)
+    }
+
+    @Test
+    fun nonNullableStr() {
+        val cc = ClassCarpenter()
+
+        val clazz = cc.build (ClassSchema("clazz",
+                mapOf("a" to NonNullableField (String::class.java))))
+
+        val serialisedBytes = TestSerializationOutput().serialize(
+                clazz.constructors.first().newInstance("this is a string"))
+
+        // this should not blow up
+        DeserializationInput().deserialize(serialisedBytes)
+    }
+
+    @Test
+    fun nonNullableChar() {
+        val cc = ClassCarpenter()
+
+        val clazz = cc.build (ClassSchema("clazz",
+                mapOf("a" to NonNullableField (Char::class.java))))
+
+        val serialisedBytes = TestSerializationOutput().serialize(
+                clazz.constructors.first().newInstance('c'))
+
+        // this should not blow up
+        DeserializationInput().deserialize(serialisedBytes)
+    }
+
+    @Test
+    fun nullableChar() {
+        val cc = ClassCarpenter()
+
+        val clazz = cc.build (ClassSchema("clazz",
+                mapOf("a" to NullableField (Character::class.java))))
+
+        val serialisedBytes = TestSerializationOutput().serialize(
+                clazz.constructors.first().newInstance('c'))
+
+        // this should not blow up
+        DeserializationInput().deserialize(serialisedBytes)
+    }
+
+    @Test
     fun manyTypes() {
         val cc = ClassCarpenter()
 
@@ -138,7 +219,7 @@ class DeserializeNeedingCarpentryTests {
                         "charA" to NonNullableField (Char::class.java),
                         "charB" to NullableField (Character::class.java))))
 
-        val serialisedBytes = SerializationOutput().serialize(
+        val serialisedBytes = TestSerializationOutput().serialize(
                 manyClass.constructors.first().newInstance(1, 2, "a", "b", 'c', 'd'))
 
         val deserializedObj = DeserializationInput().deserialize(serialisedBytes)
