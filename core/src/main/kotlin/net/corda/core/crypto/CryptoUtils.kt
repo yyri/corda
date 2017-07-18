@@ -125,7 +125,7 @@ fun entropyToKeyPair(entropy: BigInteger): KeyPair = Crypto.deriveKeyPairFromEnt
  * if this signatureData algorithm is unable to process the input data provided, etc.
  * @throws IllegalArgumentException if the signature scheme is not supported for this private key or if any of the clear or signature data is empty.
  */
-@Throws(InvalidKeyException::class, SignatureException::class)
+@Throws(InvalidKeyException::class, SignatureException::class, IllegalArgumentException::class)
 fun PublicKey.verify(signatureData: ByteArray, clearData: ByteArray): Boolean = Crypto.doVerify(this, signatureData, clearData)
 
 /**
