@@ -3,40 +3,33 @@ package net.corda.node.services.database
 import net.corda.contracts.asset.Cash
 import net.corda.contracts.asset.DUMMY_CASH_ISSUER
 import net.corda.contracts.asset.DummyFungibleContract
-import net.corda.testing.contracts.consumeCash
-import net.corda.testing.contracts.fillWithSomeTestCash
-import net.corda.testing.contracts.fillWithSomeTestDeals
-import net.corda.testing.contracts.fillWithSomeTestLinearStates
 import net.corda.core.contracts.*
 import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.toBase58String
 import net.corda.core.node.services.Vault
 import net.corda.core.node.services.VaultService
+import net.corda.core.schemas.CommonSchemaV1
 import net.corda.core.schemas.PersistentStateRef
-import net.corda.testing.schemas.DummyLinearStateSchemaV1
-import net.corda.testing.schemas.DummyLinearStateSchemaV2
+import net.corda.core.serialization.deserialize
 import net.corda.core.serialization.storageKryo
 import net.corda.core.transactions.SignedTransaction
-import net.corda.testing.ALICE
-import net.corda.testing.BOB
-import net.corda.testing.BOB_KEY
-import net.corda.testing.DUMMY_NOTARY
 import net.corda.node.services.schema.HibernateObserver
 import net.corda.node.services.schema.NodeSchemaService
-import net.corda.node.services.vault.NodeVaultService
-import net.corda.core.schemas.CommonSchemaV1
-import net.corda.core.serialization.deserialize
 import net.corda.node.services.vault.VaultSchemaV1
 import net.corda.node.utilities.CordaPersistence
 import net.corda.node.utilities.configureDatabase
 import net.corda.schemas.CashSchemaV1
 import net.corda.schemas.SampleCashSchemaV2
 import net.corda.schemas.SampleCashSchemaV3
-import net.corda.testing.BOB_PUBKEY
-import net.corda.testing.BOC
-import net.corda.testing.BOC_KEY
+import net.corda.testing.*
+import net.corda.testing.contracts.consumeCash
+import net.corda.testing.contracts.fillWithSomeTestCash
+import net.corda.testing.contracts.fillWithSomeTestDeals
+import net.corda.testing.contracts.fillWithSomeTestLinearStates
 import net.corda.testing.node.MockServices
 import net.corda.testing.node.makeTestDataSourceProperties
+import net.corda.testing.schemas.DummyLinearStateSchemaV1
+import net.corda.testing.schemas.DummyLinearStateSchemaV2
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.hibernate.SessionFactory
@@ -85,7 +78,7 @@ class HibernateConfigurationTest {
                     // Refactored to use notifyAll() as we have no other unit test for that method with multiple transactions.
                     vaultService.notifyAll(txs.map { it.tx })
                 }
-                override fun jdbcSession(): Connection = database.createSession()
+                override fun jdbcSession() = database.createSession()
             }
             hibernatePersister = services.hibernatePersister
         }
