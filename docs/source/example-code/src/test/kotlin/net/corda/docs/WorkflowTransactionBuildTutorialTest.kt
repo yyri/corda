@@ -48,7 +48,6 @@ class WorkflowTransactionBuildTutorialTest {
 
     @After
     fun cleanUp() {
-        println("Close DB")
         mockNet.stopNodes()
     }
 
