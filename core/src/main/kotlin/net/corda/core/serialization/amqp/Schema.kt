@@ -130,7 +130,104 @@ data class Descriptor(val name: String?, val code: UnsignedLong? = null) : Descr
     }
 }
 
-data class Field(val name: String, val type: String, val requires: List<String>, val default: String?, val label: String?, val mandatory: Boolean, val multiple: Boolean) : DescribedType {
+interface FieldNullablilityInterface {
+    val mandatory: Boolean
+}
+
+interface FieldNullabliltyTypeInterface : FieldNullablilityInterface {
+    companion object {
+        fun newInstance(mutable: Boolean) = when (mutable) {
+            true -> FieldNonNullable()
+            false -> FieldNullable()
+        }
+    }
+
+    fun getTypeAsClass(
+            classLoaders: List<ClassLoader> = listOf<ClassLoader> (ClassLoader.getSystemClassLoader()),
+            type: String, requires: String) : Class<out Any>
+
+    fun List<ClassLoader>.loadIfExists (clazz: String) : Class<*> {
+        this.forEach {
+            try {
+                return it.loadClass(clazz)
+            } catch (e: ClassNotFoundException) {
+                return@forEach
+            }
+        }
+        throw ClassNotFoundException(clazz)
+    }
+}
+
+class FieldNullable : FieldNullabliltyTypeInterface {
+    override val mandatory: Boolean get() = false
+
+    override fun getTypeAsClass(classLoaders: List<ClassLoader>, type: String, requires: String) = when (type) {
+        "int"     -> Integer::class.java
+        "string"  -> String::class.java
+        "short"   -> Short::class.java
+        "long"    -> Long::class.java
+        "char"    -> Character::class.java
+        "boolean" -> Boolean::class.java
+        "double"  -> Double::class.java
+        "float"   -> Float::class.java
+        "*"       -> classLoaders.loadIfExists(requires)
+        else      -> classLoaders.loadIfExists(type)
+    }
+}
+
+class FieldNonNullable : FieldNullabliltyTypeInterface {
+    override val mandatory: Boolean get() = true
+
+    override fun getTypeAsClass(classLoaders: List<ClassLoader>, type: String, requires: String) = when (type) {
+        "int"     -> Int::class.javaPrimitiveType!!
+        "string"  -> String::class.java
+        "short"   -> Short::class.javaPrimitiveType!!
+        "long"    -> Long::class.javaPrimitiveType!!
+        "char"    -> Char::class.javaPrimitiveType!!
+        "boolean" -> Boolean::class.javaPrimitiveType!!
+        "double"  -> Double::class.javaPrimitiveType!!
+        "float"   -> Float::class.javaPrimitiveType!!
+        "*"       -> classLoaders.loadIfExists(requires)
+        else      -> classLoaders.loadIfExists(type)
+    }
+}
+
+interface FieldMultiplicityInterface {
+    val multiple: Boolean
+
+    companion object {
+        fun newInstance(multiple: Boolean) = when (multiple) {
+            true -> FieldMultiple()
+            false -> FieldSingle()
+        }
+    }
+}
+
+class FieldMultiple : FieldMultiplicityInterface {
+    override val multiple: Boolean get() = true
+}
+
+class FieldSingle : FieldMultiplicityInterface {
+    override val multiple: Boolean get() = false
+}
+
+data class Field(
+        val name: String,
+        val type: String,
+        val requires: List<String>,
+        val default: String?,
+        val label: String?,
+        val mutable: FieldNullabliltyTypeInterface,
+        val multiplicity: FieldMultiplicityInterface)
+    : DescribedType, FieldNullablilityInterface, FieldMultiplicityInterface {
+
+    constructor(
+            name: String, type: String, requires: List<String>, default: String?, label: String?,
+            mutable: Boolean, multiplicity: Boolean) : this (
+                    name, type, requires, default, label,
+                    FieldNullabliltyTypeInterface.newInstance(mutable),
+                    FieldMultiplicityInterface.newInstance(multiplicity))
+
     companion object : DescribedTypeConstructor<Field> {
         val DESCRIPTOR = UnsignedLong(4L or DESCRIPTOR_TOP_32BITS)
 
@@ -147,9 +244,13 @@ data class Field(val name: String, val type: String, val requires: List<String>,
         override fun newInstance(described: Any?): Field {
             val list = described as? List<*> ?: throw IllegalStateException("Was expecting a list")
             @Suppress("UNCHECKED_CAST")
-            return Field(list[0] as String, list[1] as String, list[2] as List<String>, list[3] as? String, list[4] as? String, list[5] as Boolean, list[6] as Boolean)
+            return Field(list[0] as String, list[1] as String, list[2] as List<String>, list[3] as? String,
+                    list[4] as? String, FieldNullabliltyTypeInterface.newInstance(list[5] as Boolean),
+                    FieldMultiplicityInterface.newInstance(list[6] as Boolean))
         }
     }
+    override val multiple: Boolean get() = multiplicity.multiple
+    override val mandatory: Boolean get() = mutable.mandatory
 
     override fun getDescriptor(): Any = DESCRIPTOR
 

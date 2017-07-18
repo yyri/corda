@@ -4,6 +4,9 @@ import net.corda.core.serialization.amqp.Schema as AMQPSchema
 import net.corda.core.serialization.amqp.Field as AMQPField
 import net.corda.core.serialization.amqp.CompositeType
 
+fun AMQPField.getTypeAsClass(classLoaders: List<ClassLoader>) =
+        mutable.getTypeAsClass(classLoaders, type, requires.getOrElse(0){""})
+
 fun AMQPSchema.carpenterSchema(
         loaders : List<ClassLoader> = listOf<ClassLoader>(ClassLoader.getSystemClassLoader()))
         : CarpenterSchemas {
@@ -87,21 +90,6 @@ fun CompositeType.carpenterSchema(
                 interfaces = providesList,
                 isInterface = isInterface))
     }
-}
-
-fun AMQPField.getTypeAsClass(
-        classLoaders: List<ClassLoader> = listOf<ClassLoader> (ClassLoader.getSystemClassLoader())
-) = when (type) {
-    "int"     -> Int::class.javaPrimitiveType!!
-    "string"  -> String::class.java
-    "short"   -> Short::class.javaPrimitiveType!!
-    "long"    -> Long::class.javaPrimitiveType!!
-    "char"    -> Char::class.javaPrimitiveType!!
-    "boolean" -> Boolean::class.javaPrimitiveType!!
-    "double"  -> Double::class.javaPrimitiveType!!
-    "float"   -> Float::class.javaPrimitiveType!!
-    "*"       -> classLoaders.loadIfExists(requires[0])
-    else      -> classLoaders.loadIfExists(type)
 }
 
 fun AMQPField.validateType(
