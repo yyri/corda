@@ -2,6 +2,7 @@ package net.corda.core.serialization.amqp
 
 import org.junit.Test
 import java.io.ByteArrayOutputStream
+import kotlin.reflect.jvm.internal.impl.serialization.deserialization.Deserialization
 import kotlin.test.assertEquals
 
 /**
@@ -25,6 +26,27 @@ class DeserializeSimpleTypesTests {
     fun testCharacter() {
         data class C(val c: Character)
         val c = C(Character ('c'))
+        val serialisedC = SerializationOutput().serialize(c)
+        val deserializedC = DeserializationInput().deserialize(serialisedC)
+
+        assertEquals(c.c, deserializedC.c)
+    }
+
+    @Test
+    fun testIntArray() {
+        class I (val i: IntArray)
+        val i = I(intArrayOf (1, 2, 3))
+        val serialisedI = SerializationOutput().serialize(i)
+        println("\n\n======================\n")
+        val deserialisedI = DeserializationInput().deserialize(serialisedI)
+
+        assertEquals(i.i, deserialisedI.i)
+    }
+
+    @Test
+    fun testCharArray() {
+        class C (val c: CharArray)
+        val c = C("this is a test".toCharArray())
         val serialisedC = SerializationOutput().serialize(c)
         val deserializedC = DeserializationInput().deserialize(serialisedC)
 

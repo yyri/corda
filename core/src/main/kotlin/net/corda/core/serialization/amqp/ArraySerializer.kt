@@ -7,12 +7,12 @@ import java.lang.reflect.Type
 /**
  * Serialization / deserialization of arrays.
  */
-class ArraySerializer(override val type: Type, factory: SerializerFactory) : AMQPSerializer<Any> {
+open class ArraySerializer(override val type: Type, factory: SerializerFactory) : AMQPSerializer<Any> {
     override val typeDescriptor = "$DESCRIPTOR_DOMAIN:${fingerprintForType(type, factory)}"
 
     internal val elementType: Type = type.componentType()
 
-    private val typeNotation: TypeNotation = RestrictedType(type.typeName, null, emptyList(), "list", Descriptor(typeDescriptor, null), emptyList())
+    internal val typeNotation: TypeNotation = RestrictedType(type.typeName, null, emptyList(), "list", Descriptor(typeDescriptor, null), emptyList())
 
     override fun writeClassInfo(output: SerializationOutput) {
         if (output.writeTypeNotations(typeNotation)) {
@@ -37,7 +37,7 @@ class ArraySerializer(override val type: Type, factory: SerializerFactory) : AMQ
         } else throw NotSerializableException("Expected a List but found $obj")
     }
 
-    private fun <T> List<T>.toArrayOfType(type: Type): Any {
+    internal fun <T> List<T>.toArrayOfType(type: Type): Any {
         val elementType = type.asClass() ?: throw NotSerializableException("Unexpected array element type $type")
         val list = this
         return java.lang.reflect.Array.newInstance(elementType, this.size).apply {
@@ -46,5 +46,33 @@ class ArraySerializer(override val type: Type, factory: SerializerFactory) : AMQ
                 java.lang.reflect.Array.set(array, i, list[i])
             }
         }
+    }
+}
+
+class PrimArraySerializer(type: Type, factory: SerializerFactory) : ArraySerializer (type, factory) {
+    override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput) {
+        println ("PrimArraySerializer::writeObject")
+        println (obj::class.java)
+        println (obj.javaClass)
+        println ("element type = $elementType")
+        println (typeDescriptor)
+
+   //     println (obj as IntArray)
+
+        data.withDescribed(typeNotation.descriptor) {
+            withList {
+                for (entry in obj as IntArray) {
+                    println ("  write: $entry")
+                    output.writeObjectOrNull(entry, this, elementType)
+                }
+            }
+        }
+    }
+
+    override fun readObject(obj: Any, schema: Schema, input: DeserializationInput): Any {
+        println ("PrimArraySerializer::readObject")
+        if (obj is List<*>) {
+            return obj.map { input.readObjectOrNull(it, schema, elementType) }.toArrayOfType(elementType)
+        } else throw NotSerializableException("Expected a List but found $obj")
     }
 }

@@ -2,6 +2,7 @@ package net.corda.core.serialization.amqp
 
 import com.google.common.base.Throwables
 import net.corda.core.serialization.SerializedBytes
+import net.corda.core.serialization.serialize
 import org.apache.qpid.proton.amqp.Binary
 import org.apache.qpid.proton.amqp.DescribedType
 import org.apache.qpid.proton.amqp.UnsignedByte
@@ -129,6 +130,7 @@ class DeserializationInput(internal val serializerFactory: SerializerFactory = S
     }
 
     internal fun readObject(obj: Any, schema: Schema, type: Type): Any {
+        println (">>> readObject $type <<<")
         if (obj is DescribedType) {
             // Look up serializer in factory by descriptor
             val serializer = serializerFactory.get(obj.descriptor, schema)

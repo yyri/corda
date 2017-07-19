@@ -205,7 +205,13 @@ class SerializerFactory(val whitelist: ClassWhitelist = AllWhitelist) {
                 findCustomSerializer(clazz, declaredType) ?: run {
                     if (type.isArray()) {
                         whitelisted(type.componentType())
-                        ArraySerializer(type, this)
+                        if (isPrimitive(type.componentType())) {
+                            //ArraySerializer(type, this)
+                            PrimArraySerializer(type, this)
+                        }
+                        else {
+                            ArraySerializer(type, this)
+                        }
                     } else if (clazz.kotlin.objectInstance != null) {
                         whitelisted(clazz)
                         SingletonSerializer(clazz, clazz.kotlin.objectInstance!!, this)

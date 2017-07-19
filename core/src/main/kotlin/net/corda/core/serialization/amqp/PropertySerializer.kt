@@ -79,10 +79,12 @@ sealed class PropertySerializer(val name: String, val readMethod: Method, val re
         }
 
         override fun readProperty(obj: Any?, schema: Schema, input: DeserializationInput): Any? {
+            println ("DescribedTypePropertyserialiser::readProperty $obj")
             return input.readObjectOrNull(obj, schema, resolvedType)
         }
 
         override fun writeProperty(obj: Any?, data: Data, output: SerializationOutput) {
+            println ("DescribedTypePropertyserialiser::writeProperty $obj")
             output.writeObjectOrNull(readMethod.invoke(obj), data, resolvedType)
         }
     }
