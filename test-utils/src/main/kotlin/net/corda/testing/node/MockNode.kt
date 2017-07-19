@@ -305,7 +305,7 @@ class MockNetwork(private val networkSendManuallyPumped: Boolean = false,
         if (start) {
             node.setup().start()
             if (threadPerNode && networkMapAddress != null)
-                node.networkMapRegistrationFuture.getOrThrow()   // Block and wait for the node to register in the net map.
+                node.nodeReadyFuture.getOrThrow() // Block and wait for the node to be ready to communicate (either register with network map or load data localy).
         }
         _nodes.add(node)
         return node

@@ -3,7 +3,6 @@ package net.corda.testing.node
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors.listeningDecorator
-import com.google.common.util.concurrent.SettableFuture
 import net.corda.core.*
 import net.corda.core.crypto.X509Utilities
 import net.corda.core.crypto.appendToCommonName
@@ -32,7 +31,6 @@ import org.bouncycastle.asn1.x500.X500Name
 import org.junit.After
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
-import java.nio.file.Path
 import java.util.*
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
@@ -113,7 +111,7 @@ abstract class NodeBasedTest {
                 advertisedServices,
                 rpcUsers,
                 networkMapConf + configOverrides)
-        return if (waitForConnection) node.networkMapRegistrationFuture.map { node } else Futures.immediateFuture(node)
+        return if (waitForConnection) node.nodeReadyFuture.map { node } else Futures.immediateFuture(node)
     }
 
     fun startNotaryCluster(notaryName: X500Name,
