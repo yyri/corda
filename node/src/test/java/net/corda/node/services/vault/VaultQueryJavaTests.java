@@ -51,9 +51,9 @@ public class VaultQueryJavaTests {
     @Before
     public void setUp() {
         Properties dataSourceProps = makeTestDataSourceProperties(SecureHash.randomSHA256().toString());
-        database = configureDatabase(dataSourceProps);
-
         Set<MappedSchema> customSchemas = new HashSet<>(Collections.singletonList(DummyLinearStateSchemaV1.INSTANCE));
+        database = configureDatabase( dataSourceProps, customSchemas);
+
         HibernateConfiguration hibernateConfig = new HibernateConfiguration(new NodeSchemaService(customSchemas));
         database.transaction(
                     statement -> { services = new MockServices(getMEGA_CORP_KEY()) {

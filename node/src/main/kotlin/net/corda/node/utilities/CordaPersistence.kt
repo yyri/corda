@@ -2,6 +2,10 @@ package net.corda.node.utilities
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import net.corda.core.schemas.MappedSchema
+import net.corda.node.services.database.HibernateConfiguration
+import net.corda.node.services.schema.NodeSchemaService
+import org.hibernate.SessionFactory
 import org.jetbrains.exposed.sql.Database
 
 import rx.Observable
@@ -15,14 +19,20 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 
 //HikariDataSource implements also Closeable which allows CordaPersistence to be Closeable
-class CordaPersistence(var dataSource: HikariDataSource): Closeable {
+class CordaPersistence(var dataSource: HikariDataSource, var nodeSchemaService: NodeSchemaService): Closeable {
 
     /** Holds Exposed database, the field will be removed once Exposed library is removed */
     lateinit var database: Database
 
+    val entityManagerFactory: SessionFactory by lazy(LazyThreadSafetyMode.NONE) {
+        transaction { //
+            HibernateConfiguration(nodeSchemaService).sessionFactoryForRegisteredSchemas()
+        }
+    }
+
     companion object {
-        fun connect(dataSource: HikariDataSource): CordaPersistence {
-            return CordaPersistence(dataSource).apply {
+        fun connect(dataSource: HikariDataSource, nodeSchemaService: NodeSchemaService): CordaPersistence {
+            return CordaPersistence(dataSource, nodeSchemaService).apply {
                 DatabaseTransactionManager(this)
             }
         }
@@ -90,10 +100,10 @@ class CordaPersistence(var dataSource: HikariDataSource): Closeable {
     }
 }
 
-fun configureDatabase(props: Properties): CordaPersistence {
+fun configureDatabase(props: Properties, entitySchemas : Set<MappedSchema> = emptySet<MappedSchema>()): CordaPersistence {
     val config = HikariConfig(props)
     val dataSource = HikariDataSource(config)
-    val persistence = CordaPersistence.connect(dataSource)
+    val persistence = CordaPersistence.connect(dataSource, NodeSchemaService(entitySchemas))
 
     //org.jetbrains.exposed.sql.Database will be removed once Exposed library is removed
     val database = Database.connect(dataSource) { _ -> ExposedTransactionManager() }
