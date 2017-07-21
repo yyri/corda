@@ -22,7 +22,7 @@ class BroadcastTransactionFlowTest {
     class NotifyTxRequestMessageGenerator : Generator<NotifyTxRequest>(NotifyTxRequest::class.java) {
         override fun generate(random: SourceOfRandomness, status: GenerationStatus): NotifyTxRequest {
             initialiseTestSerialization()
-            return NotifyTxRequest(tx = SignedTransactionGenerator().generate(random, status))
+            return NotifyTxRequest(SignedTransactionGenerator().generate(random, status))
         }
     }
 
