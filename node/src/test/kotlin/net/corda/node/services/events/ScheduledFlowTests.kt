@@ -101,7 +101,6 @@ class ScheduledFlowTests {
         mockNet.stopNodes()
     }
 
-    @Ignore //Temporary
     @Test
     fun `create and run scheduled flow then wait for result`() {
         val stateMachines = nodeA.smm.track()
@@ -126,7 +125,6 @@ class ScheduledFlowTests {
         assertTrue("Must be processed", stateFromB.state.data.processed)
     }
 
-    @Ignore //Temporary
     @Test
     fun `run a whole batch of scheduled flows`() {
         val N = 100

@@ -11,8 +11,14 @@ import net.corda.node.services.api.WritableTransactionStorage
 import net.corda.node.utilities.*
 import rx.Observable
 import rx.subjects.PublishSubject
+import java.util.concurrent.locks.ReentrantReadWriteLock
 import javax.persistence.*
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 
+fun <T: Any> deserializeFromByteArray(blob: ByteArray): T =  SerializedBytes<T>(blob, true).deserialize()
+
+fun <T: Any> serializeToByteArray(v: T): ByteArray = v.serialize(storageKryo(), true).bytes
 
 object TransactionSchema
 
@@ -32,54 +38,47 @@ object TransactionSchemaV1 : MappedSchema(schemaFamily = TransactionSchema.javaC
     )
 }
 
-fun <T : Any> deserializeFromByteArray(blob: ByteArray): T =  SerializedBytes<T>(blob, true).deserialize()
-
-fun <T: Any> serializeToByteArray(v: T): ByteArray = v.serialize(storageKryo(), true).bytes
-
 class DBTransactionStorage : WritableTransactionStorage, SingletonSerializeAsToken() {
 
-    override fun addTransaction(transaction: SignedTransaction): Boolean =
-        synchronized(this) {
-            val tr: TransactionSchemaV1.Transaction = TransactionSchemaV1.Transaction()
-            tr.tx_id = transaction.id.toString()
-            tr.transaction = serializeToByteArray(transaction)
-            val session = DatabaseTransactionManager.current().session
-            try {
-                session.saveOrUpdate(tr)
-                updatesPublisher.bufferUntilDatabaseCommit().onNext(transaction)
-                true
-            } catch (e : EntityExistsException) {
-                //exposedLogger.warn("Duplicate recording of transaction ${transaction.id}")
-                false
-            } catch (e: Throwable) {
-                false
-            }
-        }
-
-
-    override fun getTransaction(id: SecureHash): SignedTransaction? {
-        synchronized(this) {
-            val session = DatabaseTransactionManager.current().session
-            val result = session.find(TransactionSchemaV1.Transaction::class.java, id.toString())
-            return if(result != null) deserializeFromByteArray<SignedTransaction>(result.transaction) else null
+    private companion object {
+        fun createTransactionsMap(): AppendOnlyPersistentMap<SecureHash, SignedTransaction, TransactionSchemaV1.Transaction, String> {
+            return AppendOnlyPersistentMap(
+                    cacheBound = 1024,
+                    toPersistentEntityKey = { it.toString() },
+                    fromPersistentEntity = { Pair(SecureHash.parse(it.tx_id), deserializeFromByteArray<SignedTransaction>(it.transaction)) },
+                    toPersistentEntity = { key: SecureHash, value: SignedTransaction ->
+                        TransactionSchemaV1.Transaction().apply {
+                            tx_id = key.toString()
+                            transaction = serializeToByteArray(value)
+                        }
+                    },
+                    persistentEntityClass = TransactionSchemaV1.Transaction::class.java
+            )
         }
     }
+    private val txStorage = createTransactionsMap()
+    private val lock = ReentrantReadWriteLock()
+
+    override fun addTransaction(transaction: SignedTransaction): Boolean =
+        lock.write {
+            txStorage[transaction.id] = transaction
+            updatesPublisher.bufferUntilDatabaseCommit().onNext(transaction)
+            return true
+        }
+
+    override fun getTransaction(id: SecureHash): SignedTransaction? =
+        lock.read {
+            return txStorage[id]
+        }
 
     private val updatesPublisher = PublishSubject.create<SignedTransaction>().toSerialized()
     override val updates: Observable<SignedTransaction> = updatesPublisher.wrapWithDatabaseTransaction()
 
     override fun track(): DataFeed<List<SignedTransaction>, SignedTransaction> =
-        synchronized(this) {
-            return DataFeed(getAll(), updatesPublisher.bufferUntilSubscribed().wrapWithDatabaseTransaction())
+        lock.read {
+            return DataFeed(txStorage.loadAll().map { it.second }.toList(), updatesPublisher.bufferUntilSubscribed().wrapWithDatabaseTransaction())
         }
 
     @VisibleForTesting
-    val transactions: Iterable<SignedTransaction> get() = synchronized(this) { getAll() }
-
-    fun getAll() : List<SignedTransaction> {
-        val session = DatabaseTransactionManager.current().session
-        val query = session.createQuery("FROM " + TransactionSchemaV1.Transaction::class.java.name )
-        val res: MutableList<TransactionSchemaV1.Transaction> = query.resultList as MutableList<TransactionSchemaV1.Transaction>
-        return res.map { deserializeFromByteArray<SignedTransaction>(it.transaction) }
-    }
+    val transactions: Iterable<SignedTransaction> get() = synchronized(this) { txStorage.loadAll().map { it.second }.toList() }
 }

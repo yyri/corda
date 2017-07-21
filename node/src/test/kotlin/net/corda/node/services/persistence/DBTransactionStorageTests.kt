@@ -184,7 +184,7 @@ class DBTransactionStorageTests {
         }
         assertTransactionIsRetrievable(firstTransaction)
         database.transaction {
-            assertThat(transactionStorage.transactions).containsOnly(firstTransaction)//,secondTransaction)
+            assertThat(transactionStorage.transactions).containsOnly(firstTransaction, secondTransaction)
         }
     }
 
