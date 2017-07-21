@@ -18,7 +18,7 @@ import net.corda.core.utilities.NonEmptySet
 @InitiatingFlow
 class BroadcastTransactionFlow(val notarisedTransaction: SignedTransaction,
                                val participants: NonEmptySet<Party>) : FlowLogic<Unit>() {
-    @CordaSerializable
+
     data class NotifyTxRequest(override val stx: SignedTransaction) : ResolvableTransactionData.Transaction
 
     @Suspendable

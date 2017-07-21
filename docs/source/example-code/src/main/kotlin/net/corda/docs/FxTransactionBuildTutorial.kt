@@ -26,7 +26,6 @@ private data class FxRequest(val tradeId: String,
                              val counterparty: Party,
                              val notary: Party? = null)
 
-@CordaSerializable
 private data class FxResponse(val inputs: List<StateAndRef<Cash.State>>,
                               val outputs: List<Cash.State>) : ResolvableTransactionData {
     override val dependencies: Set<SecureHash> get() = inputs.map { it.ref.txhash }.toSet()
@@ -131,7 +130,7 @@ class ForeignExchangeFlow(val tradeId: String,
         // Then they can return their candidate states
         send(remoteRequestWithNotary.owner, remoteRequestWithNotary)
 
-        val theirStates = receiveTransaction<FxResponse>(remoteRequestWithNotary.owner).unwrap {
+        val theirStates = subFlow(ReceiveTransactionFlow(FxResponse::class.java, remoteRequestWithNotary.owner)).unwrap {
             require(it.inputs.all { it.state.notary == notary }) {
                 "notary of remote states must be same as for our states"
             }
@@ -157,7 +156,7 @@ class ForeignExchangeFlow(val tradeId: String,
 
         // pass transaction details to the counterparty to revalidate and confirm with a signature
         // Allow otherParty to access our data to resolve the transaction.
-        sendTransaction(remoteRequestWithNotary.owner, signedTransaction)
+        subFlow(SendTransactionFlow(remoteRequestWithNotary.owner, signedTransaction))
         val allPartySignedTx = receive<DigitalSignature.WithKey>(remoteRequestWithNotary.owner).unwrap {
             val withNewSignature = signedTransaction + it
             // check all signatures are present except the notary
@@ -234,8 +233,8 @@ class ForeignExchangeRemoteFlow(val source: Party) : FlowLogic<Unit>() {
         // Send back our proposed states and await the full transaction to verify
         val ourKey = serviceHub.keyManagementService.filterMyKeys(ourResponse.inputs.flatMap { it.state.data.participants }.map { it.owningKey }).single()
         // SendTransactionFlow allows otherParty to access our data to resolve the transaction.
-        sendTransaction(source, ourResponse)
-        val proposedTrade = receiveTransaction<SignedTransaction>(source, verifySignature = false, verifyTransaction = false).unwrap {
+        subFlow(SendTransactionFlow(source, ourResponse))
+        val proposedTrade = subFlow(ReceiveTransactionFlow(SignedTransaction::class.java, source, verifySignatures = false, verifyTransaction = false)).unwrap {
             val wtx = it.tx
             // check all signatures are present except our own and the notary
             it.verifySignaturesExcept(ourKey, wtx.notary!!.owningKey)

@@ -1,10 +1,9 @@
-package net.corda.node.messaging
+package net.corda.core.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.contracts.Attachment
 import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.sha256
-import net.corda.core.flows.*
 import net.corda.core.getOrThrow
 import net.corda.core.identity.Party
 import net.corda.core.messaging.SingleMessageRecipient
@@ -155,12 +154,12 @@ class AttachmentTests {
     @InitiatingFlow
     private class InitiatingFetchAttachmentsFlow(val otherSide: Party, val hashes: Set<SecureHash>) : FlowLogic<FetchDataFlow.Result<Attachment>>() {
         @Suspendable
-        override fun call(): FetchDataFlow.Result<Attachment> = subFlow(FetchAttachmentsFlow(hashes, otherSide))
+        override fun call(): FetchDataFlow.Result<Attachment> = subFlow(ResolveTransactionsFlow.FetchAttachmentsFlow(hashes, otherSide))
     }
 
     @InitiatedBy(InitiatingFetchAttachmentsFlow::class)
     private class FetchAttachmentsResponse(val otherSide: Party) : FlowLogic<Unit>() {
         @Suspendable
-        override fun call() = sendTransaction(otherSide, null)
+        override fun call() = subFlow(SendTransactionFlow(otherSide, null))
     }
 }

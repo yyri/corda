@@ -1,6 +1,7 @@
 package net.corda.core.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import com.google.common.reflect.TypeToken
 import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.StateRef
@@ -27,7 +28,6 @@ abstract class AbstractStateReplacementFlow {
      *
      * @param M the type of a class representing proposed modification by the instigator.
      */
-    @CordaSerializable
     data class Proposal<out M>(val stateRef: StateRef, val modification: M, override val stx: SignedTransaction) : ResolvableTransactionData.Transaction
 
     /**

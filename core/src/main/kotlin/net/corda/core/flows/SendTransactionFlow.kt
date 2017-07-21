@@ -21,7 +21,13 @@ import net.corda.core.utilities.unwrap
  */
 open class SendTransactionFlow(protected val otherSide: Party, protected val data: ResolvableTransactionData?) : FlowLogic<Unit>() {
     @Suspendable
-    protected open fun sendPayloadAndReceiveDataRequest(payload: Any?) = payload?.let { sendAndReceive<FetchDataFlow.Request>(otherSide, payload) } ?: receive<FetchDataFlow.Request>(otherSide)
+    protected open fun sendPayloadAndReceiveDataRequest(payload: Any?): UntrustworthyData<FetchDataFlow.Request> {
+        return if (payload != null) {
+            payload.let { sendAndReceive<FetchDataFlow.Request>(otherSide, payload) }
+        } else {
+            receive<FetchDataFlow.Request>(otherSide)
+        }
+    }
 
     @Suspendable
     protected open fun verifyDataRequest(dataRequest: FetchDataFlow.Request.Data) {
@@ -39,8 +45,6 @@ open class SendTransactionFlow(protected val otherSide: Party, protected val dat
             val dataRequest = sendPayloadAndReceiveDataRequest(payload).unwrap { request ->
                 when (request) {
                     is FetchDataFlow.Request.Data -> {
-                        // Verify request.
-                        if (request.hashes.isEmpty()) throw FlowException("Empty hash list")
                         verifyDataRequest(request)
                         request
                     }
@@ -61,10 +65,10 @@ open class SendTransactionFlow(protected val otherSide: Party, protected val dat
 
 // Convenient methods for Kotlin.
 @Suspendable
-fun FlowLogic<*>.sendTransaction(otherSide: Party, data: ResolvableTransactionData?) = subFlow(SendTransactionFlow(otherSide, data))
+internal fun FlowLogic<*>.sendTransaction(otherSide: Party, data: ResolvableTransactionData?) = subFlow(SendTransactionFlow(otherSide, data))
 
 @Suspendable
-inline fun <reified T : Any> FlowLogic<*>.sendTransactionAndReceive(otherSide: Party, data: ResolvableTransactionData?): UntrustworthyData<T> {
+internal inline fun <reified T : Any> FlowLogic<*>.sendTransactionAndReceive(otherSide: Party, data: ResolvableTransactionData?): UntrustworthyData<T> {
     subFlow(SendTransactionFlow(otherSide, data))
     return receive(otherSide)
 }

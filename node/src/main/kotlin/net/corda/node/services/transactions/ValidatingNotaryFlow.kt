@@ -24,18 +24,16 @@ class ValidatingNotaryFlow(otherSide: Party, service: TrustedAuthorityNotaryServ
     @Suspendable
     override fun receiveAndVerifyTx(): TransactionParts {
         try {
-            return receiveTransaction<SignedTransaction>(otherSide, verifySignature = false).unwrap {
+            return subFlow(ReceiveTransactionFlow(SignedTransaction::class.java, otherSide, verifySignatures = false)).unwrap {
                 it.verifySignaturesExcept(serviceHub.myInfo.notaryIdentity.owningKey)
                 val wtx = it.tx
                 wtx.toLedgerTransaction(serviceHub).verify()
                 TransactionParts(wtx.id, wtx.inputs, wtx.timeWindow)
             }
-        } catch (e: Exception) {
-            throw when (e) {
-                is TransactionVerificationException,
-                is SignatureException -> NotaryException(NotaryError.TransactionInvalid(e))
-                else -> e
-            }
+        } catch(e: TransactionVerificationException) {
+            throw NotaryException(NotaryError.TransactionInvalid(e))
+        } catch (e: SignatureException) {
+            throw NotaryException(NotaryError.TransactionInvalid(e))
         }
     }
 }

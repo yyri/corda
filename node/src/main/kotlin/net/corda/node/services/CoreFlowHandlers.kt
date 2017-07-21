@@ -18,7 +18,8 @@ import net.corda.core.utilities.unwrap
 class NotifyTransactionHandler(val otherParty: Party) : FlowLogic<Unit>() {
     @Suspendable
     override fun call() {
-        val request = receiveTransaction<BroadcastTransactionFlow.NotifyTxRequest>(otherParty).unwrap { it }
+        val request = subFlow(ReceiveTransactionFlow(BroadcastTransactionFlow.NotifyTxRequest::class.java, otherParty))
+                .unwrap { it }
         serviceHub.recordTransactions(request.stx)
     }
 }

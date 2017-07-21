@@ -7,6 +7,7 @@ import net.corda.core.flows.FetchDataFlow.DownloadedVsRequestedDataMismatch
 import net.corda.core.flows.FetchDataFlow.HashNotFound
 import net.corda.core.identity.Party
 import net.corda.core.serialization.CordaSerializable
+import net.corda.core.utilities.NonEmptySet
 import net.corda.core.utilities.UntrustworthyData
 import net.corda.core.utilities.unwrap
 import java.util.*
@@ -45,7 +46,7 @@ abstract class FetchDataFlow<T : NamedByHash, W : Any>(
 
     @CordaSerializable
     sealed class Request {
-        data class Data(val hashes: List<SecureHash>, val dataType: DataType) : Request()
+        data class Data(val hashes: NonEmptySet<SecureHash>, val dataType: DataType) : Request()
         object End : Request()
     }
 
@@ -76,7 +77,7 @@ abstract class FetchDataFlow<T : NamedByHash, W : Any>(
             for (hash in toFetch) {
                 // We skip the validation here (with unwrap { it }) because we will do it below in validateFetchResponse.
                 // The only thing checked is the object type. It is a protocol violation to send results out of order.
-                maybeItems += sendAndReceive<List<W>>(otherSide, Request.Data(listOf(hash), dataType)).unwrap {it}
+                maybeItems += sendAndReceive<List<W>>(otherSide, Request.Data(NonEmptySet.of(hash), dataType)).unwrap { it }
             }
             // Check for a buggy/malicious peer answering with something that we didn't ask for.
             val downloaded = validateFetchResponse(UntrustworthyData(maybeItems), toFetch)

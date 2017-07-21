@@ -135,7 +135,7 @@ class AttachmentSerializationTest {
     private class FetchAttachmentLogic(server: MockNetwork.MockNode, private val attachmentId: SecureHash) : ClientLogic(server) {
         @Suspendable
         override fun getAttachmentContent(): String {
-            val (downloadedAttachment) = subFlow(FetchAttachmentsFlow(setOf(attachmentId), server)).downloaded
+            val (downloadedAttachment) = subFlow(ResolveTransactionsFlow.FetchAttachmentsFlow(setOf(attachmentId), server)).downloaded
             send(server, FetchDataFlow.Request.End)
             communicate()
             return downloadedAttachment.extractContent()

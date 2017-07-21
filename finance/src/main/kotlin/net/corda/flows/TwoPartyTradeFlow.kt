@@ -9,11 +9,10 @@ import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.AnonymousParty
 import net.corda.core.identity.Party
 import net.corda.core.node.NodeInfo
-import net.corda.core.utilities.seconds
-import net.corda.core.serialization.CordaSerializable
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
+import net.corda.core.utilities.seconds
 import net.corda.core.utilities.unwrap
 import java.security.PublicKey
 import java.util.*
@@ -46,7 +45,6 @@ object TwoPartyTradeFlow {
     }
 
     // This object is serialised to the network and is the first flow message the seller sends to the buyer.
-    @CordaSerializable
     data class SellerTradeInfo(
             val assetForSale: StateAndRef<OwnableState>,
             val price: Amount<Currency>,
@@ -82,7 +80,7 @@ object TwoPartyTradeFlow {
             // What we get back from the other side is a transaction that *might* be valid and acceptable to us,
             // but we must check it out thoroughly before we sign!
             // SendTransactionFlow allows otherParty to access our data to resolve the transaction.
-            sendTransaction(otherParty, hello)
+            subFlow(SendTransactionFlow(otherParty, hello))
             // Verify and sign the transaction.
             progressTracker.currentStep = VERIFYING_AND_SIGNING
             // DOCSTART 5
@@ -154,7 +152,7 @@ object TwoPartyTradeFlow {
 
         @Suspendable
         private fun receiveAndValidateTradeRequest(): SellerTradeInfo {
-            return receiveTransaction<SellerTradeInfo>(otherParty).unwrap {
+            return subFlow(ReceiveTransactionFlow(SellerTradeInfo::class.java, otherParty)).unwrap {
                 progressTracker.currentStep = VERIFYING
                 val asset = it.assetForSale.state.data
                 val assetTypeName = asset.javaClass.name
